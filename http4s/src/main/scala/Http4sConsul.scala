@@ -28,5 +28,5 @@ final class Http4sConsulClient(baseUri: Uri, client: Client) extends (ConsulOp ~
     } yield head.value
 
   def set(key: Key, value: String): Task[Unit]=
-    client.fetchAs[String](PUT((baseUri / key), ByteVector(value.getBytes("UTF-8")))).void
+    client.fetchAs[String](PUT((baseUri / key), ByteVector.view(value.getBytes("UTF-8")))).void
 }
