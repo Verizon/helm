@@ -24,9 +24,9 @@ There are currently only two supported operations, get and set:
 
     import consul._
 
-	val s: ConsulOp[Unit] = : ConsulOp.set("key", "value")
+	val s: ConsulOpF[Unit] = : ConsulOp.set("key", "value")
 
-	val g: ConsulOp[String] = : ConsulOp.get("key")
+	val g: ConsulOpF[String] = : ConsulOp.get("key")
 
 These are however just descriptions of what operations we might
 perform in the future, just creating these operations does not
@@ -55,8 +55,8 @@ which actually interact with consul.
 
 	import scalaz.concurrent.Task
 	
-	val s: Task[Unit] = c(ConsulOp.Set("testkey", "testvalue"))
-    val g: Task[String] = c(ConsulOp.Get("testkey"))
+	val s: Task[Unit] = consul.run(ConsulOp.set("testkey", "testvalue"))(c)
+    val g: Task[String] = consul.run(ConsulOp.get("testkey"))(c)
 
     s.run
     g.run

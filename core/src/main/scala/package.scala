@@ -1,10 +1,14 @@
 import argonaut._, Argonaut._
+import scalaz.{~>,Free,Monad}
 import scalaz.concurrent.Task
 import scalaz.syntax.std.option._
 
 package object consul {
   type Err = String // YOLO
   type Key = String
+
+  def run[F[_]:Monad, A](interpreter: ConsulOp ~> F, op: ConsulOp.ConsulOpF[A]): F[A] =
+    Free.runFC(op)(interpreter)
 
   private val base64Decoder = java.util.Base64.getDecoder
   private val base64StringDecoder: DecodeJson[String] =
