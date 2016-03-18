@@ -19,9 +19,7 @@ final class DispatchConsulClient(baseUri: Req, client: Http, executionContext: E
     Task async { k =>
       a.onComplete {
         case Success(t) => k(\/.right(t))
-        case Failure(e) =>
-          println("error: " + e)
-          k(\/.left(e))
+        case Failure(e) => k(\/.left(e))
       }
     }
 

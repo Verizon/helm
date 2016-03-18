@@ -23,5 +23,6 @@ object ConsulOp {
   def set(key: Key, value: String): ConsulOpF[Unit] =
     Free.liftFC(Set(key, value))
 
-  def setJson[A](key: Key, value: A)(implicit A: EncodeJson[A]): ConsulOpF[Unit] = ???
+  def setJson[A](key: Key, value: A)(implicit A: EncodeJson[A]): ConsulOpF[Unit] =
+    set(key, A.encode(value).toString)
 }
