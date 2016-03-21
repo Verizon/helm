@@ -1,7 +1,7 @@
 package consul
 
 import scala.language.existentials
-import scalaz.{\/, Free}
+import scalaz.{\/, Coyoneda, Free, Monad}
 import argonaut.{DecodeJson, EncodeJson, StringWrap}, StringWrap.StringToParseWrap
 
 sealed abstract class ConsulOp[A] extends Product with Serializable
@@ -13,6 +13,10 @@ object ConsulOp {
   final case class Set(key: Key, value: String) extends ConsulOp[Unit]
 
   type ConsulOpF[A] = Free.FreeC[ConsulOp, A]
+  type ConsulOpC[A] = Coyoneda[ConsulOp, A]
+
+  // this shouldn't be necessary, but we need to help the compiler out a bit
+  implicit val consulOpFMonad: Monad[ConsulOpF] = Free.freeMonad[ConsulOpC]
 
   def get(key: Key): ConsulOpF[String] =
     Free.liftFC(Get(key))
