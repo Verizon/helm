@@ -1,7 +1,7 @@
 package consul
 
 import scala.language.existentials
-import scalaz.{\/, Coyoneda, Free, Monad}
+import scalaz.{\/, Coyoneda, EitherT, Free, Monad}
 import argonaut.{DecodeJson, EncodeJson, StringWrap}, StringWrap.StringToParseWrap
 
 sealed abstract class ConsulOp[A] extends Product with Serializable
@@ -21,8 +21,8 @@ object ConsulOp {
   def get(key: Key): ConsulOpF[String] =
     Free.liftFC(Get(key))
 
-  def getJson[A:DecodeJson](key: Key): ConsulOpF[Err \/ A] =
-    get(key).map(_.decodeEither[A])
+  def getJson[A:DecodeJson](key: Key): EitherT[ConsulOpF, Err, A] =
+    EitherT[ConsulOpF, Err, A](get(key).map(_.decodeEither[A]))
 
   def set(key: Key, value: String): ConsulOpF[Unit] =
     Free.liftFC(Set(key, value))
