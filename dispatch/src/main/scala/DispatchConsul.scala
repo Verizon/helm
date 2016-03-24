@@ -1,6 +1,8 @@
 package consul
 package dispatch
 
+import journal.Logger
+
 import scalaz.{~>,\/}
 import scalaz.concurrent.Task
 import scalaz.syntax.std.option._
@@ -11,6 +13,7 @@ import argonaut._, Argonaut._
 import _root_.dispatch._, _root_.dispatch.Defaults._
 
 final class DispatchConsulClient(baseUri: Req, client: Http, executionContext: ExecutionContext) extends (ConsulOp ~> Task) {
+  private val log = Logger[this.type]
 
   implicitly[DecodeJson[KvResponse]]
   implicitly[DecodeJson[KvResponses]]
@@ -30,15 +33,21 @@ final class DispatchConsulClient(baseUri: Req, client: Http, executionContext: E
 
   def set(key: Key, value: String): Task[Unit] = {
     val req = (baseUri / key).PUT << value
-    fromScalaFuture(client(req))(executionContext).void
+    for {
+      _ <- Task.delay(log.debug(s"setting consul key $key to $value"))
+      response <- fromScalaFuture(client(req))(executionContext)
+    } yield log.debug(s"setting consul key $key resulted in response $response")
   }
 
   def get(key: Key): Task[String] =
     for {
+      _ <- Task.delay(log.debug(s"fetching consul key $key"))
       res <- fromScalaFuture(client(baseUri / key))(executionContext).map(_.getResponseBody)
-      _ = println("json:" + res.toString)
+      _ = log.debug(s"consul response for key $key: $res")
       decoded <- Parse.decodeEither[KvResponses](res).fold(e => Task.fail(new Exception(e)), Task.now)
       head <- keyValue(key, decoded)
-
-    } yield head.value
+    } yield {
+      log.debug(s"consul value for key $key is $head")
+      head.value
+    }
 }
