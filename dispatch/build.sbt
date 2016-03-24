@@ -1,3 +1,4 @@
+import consul.Dependencies._
 import verizon.build._
 
 common.settings
@@ -5,7 +6,8 @@ common.settings
 metadata.settings
 
 libraryDependencies ++= Seq(
-  "net.databinder.dispatch" %% "dispatch-core" % "0.11.2"
+  "net.databinder.dispatch" %% "dispatch-core" % "0.11.2",
+  journal.core
 )
 
 (initialCommands in console) := """
