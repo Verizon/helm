@@ -39,7 +39,7 @@ need to use either the http4s or dispatch interpreter.
 First we create an interpreter, which requires a dispatch client, a
 base url for consul, and an ExecutionContext.
 
-    import consul.dispatch
+    import consul.dispatch._
 	import _root_.dispatch._, _root_.dispatch.Defaults._
 	
 	import scala.concurrent.ExecutionContext.global // don't actually use this in real code

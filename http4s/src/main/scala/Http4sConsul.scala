@@ -15,7 +15,9 @@ import scalaz.syntax.functor._
 
 import scodec.bits.ByteVector
 
-final class Http4sConsulClient(baseUri: Uri, client: Client) extends (ConsulOp ~> Task) {
+final class Http4sConsulClient(baseUri: Uri,
+                               client: Client,
+                               accessToken: Option[String] = None) extends (ConsulOp ~> Task) {
   private implicit val responseDecoder: EntityDecoder[KvResponses] = jsonOf[KvResponses]
   private val log = Logger[this.type]
 
@@ -24,19 +26,23 @@ final class Http4sConsulClient(baseUri: Uri, client: Client) extends (ConsulOp ~
     case ConsulOp.Set(key, value) => set(key, value)
   }
 
-  def get(key: Key): Task[String] =
+  def addHeader(treq: Task[Request]): Task[Request] =
+    treq.map(req => accessToken.fold(req)(tok => req.putHeaders(Header("Consul-Token", tok))))
+
+  def get(key: Key): Task[String] = {
     for {
       _ <- Task.delay(log.debug(s"fetching consul key $key"))
-      kvs <- client.getAs[KvResponses](baseUri / key)
+      kvs <- client.fetchAs[KvResponses](addHeader(GET(baseUri / key)))
       head <- keyValue(key, kvs)
     } yield {
       log.debug(s"consul value for key $key is $kvs")
       head.value
     }
+  }
 
   def set(key: Key, value: String): Task[Unit]=
     for {
       _ <- Task.delay(log.debug(s"setting consul key $key to $value"))
-      response <- client.fetchAs[String](PUT((baseUri / key), ByteVector.view(value.getBytes("UTF-8"))))
+      response <- client.fetchAs[String](addHeader(PUT(baseUri / key, ByteVector.view(value.getBytes("UTF-8")))))
     } yield log.debug(s"setting consul key $key resulted in response $response")
 }
