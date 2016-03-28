@@ -15,13 +15,14 @@ before_script:
   - "if [ $TRAVIS_PULL_REQUEST = 'false' ]; then git checkout -qf $TRAVIS_BRANCH; fi"
 
 script:
-  - "if [ $TRAVIS_PULL_REQUEST = 'false' ]; then sbt ++$TRAVIS_SCALA_VERSION 'release with-defaults'; else sbt ++$TRAVIS_SCALA_VERSION test ; fi"
+  - "if [ $TRAVIS_PULL_REQUEST = 'false' ]; then sbt ++$TRAVIS_SCALA_VERSION 'release with-defaults'; else sbt ++$TRAVIS_SCALA_VERSION test coverageReport; fi"
   - find $HOME/.sbt -name "*.lock" | xargs rm
   - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
 
 after_success:
   - find $HOME/.sbt -name "*.lock" | xargs rm
   - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
+  - "bash <(curl -s https://codecov.oncue.verizon.net/bash) -u https://codecov.oncue.verizon.net -r $TRAVIS_REPO_SLUG -t 334fb610-3377-46fb-8475-367e9d3e149a"
 
 cache:
   directories:
