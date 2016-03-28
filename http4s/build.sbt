@@ -10,7 +10,6 @@ val http4sVersion = "0.12.10"
 
 libraryDependencies ++= Seq(
   http4sOrg %% "http4s-client" % http4sVersion,
-  http4sOrg %% "http4s-dsl" % http4sVersion,
   http4sOrg %% "http4s-argonaut" % http4sVersion,
   journal.core
 )
