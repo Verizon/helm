@@ -2,14 +2,14 @@ package consul
 package http4s
 
 import journal.Logger
+import BedazzledHttp4sClient._
 
 import org.http4s._
-import org.http4s.dsl._
 import org.http4s.client._
 import org.http4s.argonaut.jsonOf
-import org.http4s.dsl._
 import scalaz.~>
 import scalaz.concurrent.Task
+import scalaz.stream.Process
 import scalaz.syntax.std.option._
 import scalaz.syntax.functor._
 
@@ -26,13 +26,13 @@ final class Http4sConsulClient(baseUri: Uri,
     case ConsulOp.Set(key, value) => set(key, value)
   }
 
-  def addHeader(treq: Task[Request]): Task[Request] =
-    treq.map(req => accessToken.fold(req)(tok => req.putHeaders(Header("Consul-Token", tok))))
+  def addHeader(req: Request): Request =
+    accessToken.fold(req)(tok => req.putHeaders(Header("Consul-Token", tok)))
 
   def get(key: Key): Task[String] = {
     for {
       _ <- Task.delay(log.debug(s"fetching consul key $key"))
-      kvs <- client.fetchAs[KvResponses](addHeader(GET(baseUri / key)))
+      kvs <- client.expect[KvResponses](addHeader(Request(uri = baseUri / key)))
       head <- keyValue(key, kvs)
     } yield {
       log.debug(s"consul value for key $key is $kvs")
@@ -43,6 +43,10 @@ final class Http4sConsulClient(baseUri: Uri,
   def set(key: Key, value: String): Task[Unit]=
     for {
       _ <- Task.delay(log.debug(s"setting consul key $key to $value"))
-      response <- client.fetchAs[String](addHeader(PUT(baseUri / key, ByteVector.view(value.getBytes("UTF-8")))))
+      response <- client.expect[String](
+        addHeader(
+          Request(
+            uri = baseUri / key,
+            body = Process.emit(ByteVector.view(value.getBytes("UTF-8"))))))
     } yield log.debug(s"setting consul key $key resulted in response $response")
 }
