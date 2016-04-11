@@ -35,10 +35,10 @@ final class DispatchConsulClient(baseUri: Req,
   }
 
   def addToken(req: Req): Req = 
-    accessToken.fold(req)(tok => req <:< Map("Consul-Token" -> tok))
+    accessToken.fold(req)(tok => req <:< Map("X-Consul-Token" -> tok))
 
   def set(key: Key, value: String): Task[Unit] = {
-    val req = addToken((baseUri / key).PUT << value)
+    val req = addToken((baseUri / "v1" / "kv" / key).PUT << value)
 
     for {
       _ <- Task.delay(log.debug(s"setting consul key $key to $value"))
@@ -51,7 +51,7 @@ final class DispatchConsulClient(baseUri: Req,
   def get(key: Key): Task[String] =
     for {
       _ <- Task.delay(log.debug(s"fetching consul key $key"))
-      res <- fromScalaFuture(client(addToken(baseUri / key)))(executionContext).map(_.getResponseBody)
+      res <- fromScalaFuture(client(addToken(baseUri / "v1" / "kv" / key)))(executionContext).map(_.getResponseBody)
       _ = log.debug(s"consul response for key $key: $res")
       decoded <- Parse.decodeEither[KvResponses](res).fold(e => Task.fail(new Exception(e)), Task.now)
       head <- keyValue(key, decoded)
