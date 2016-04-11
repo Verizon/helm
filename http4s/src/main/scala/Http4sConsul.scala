@@ -27,12 +27,12 @@ final class Http4sConsulClient(baseUri: Uri,
   }
 
   def addHeader(req: Request): Request =
-    accessToken.fold(req)(tok => req.putHeaders(Header("Consul-Token", tok)))
+    accessToken.fold(req)(tok => req.putHeaders(Header("X-Consul-Token", tok)))
 
   def get(key: Key): Task[String] = {
     for {
       _ <- Task.delay(log.debug(s"fetching consul key $key"))
-      kvs <- client.expect[KvResponses](addHeader(Request(uri = baseUri / key)))
+      kvs <- client.expect[KvResponses](addHeader(Request(uri = baseUri / "v1" / "kv" / key)))
       head <- keyValue(key, kvs)
     } yield {
       log.debug(s"consul value for key $key is $kvs")
@@ -46,7 +46,7 @@ final class Http4sConsulClient(baseUri: Uri,
       response <- client.expect[String](
         addHeader(
           Request(
-            uri = baseUri / key,
+            uri = baseUri / "v1" / "kv" / key,
             body = Process.emit(ByteVector.view(value.getBytes("UTF-8"))))))
     } yield log.debug(s"setting consul key $key resulted in response $response")
 }
