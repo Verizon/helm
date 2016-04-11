@@ -43,7 +43,9 @@ final class DispatchConsulClient(baseUri: Req,
     for {
       _ <- Task.delay(log.debug(s"setting consul key $key to $value"))
       response <- fromScalaFuture(client(req))(executionContext)
-    } yield log.debug(s"setting consul key $key resulted in response $response")
+      status = response.getStatusCode()
+      body = if(response.hasResponseBody()) response.getResponseBody else ""
+    } yield log.debug(s"setting consul key $key resulted in status: $status response: $body")
   }
 
   def get(key: Key): Task[String] =
