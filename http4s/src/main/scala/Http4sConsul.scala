@@ -7,6 +7,7 @@ import BedazzledHttp4sClient._
 import org.http4s._
 import org.http4s.client._
 import org.http4s.argonaut.jsonOf
+import org.http4s.headers.Authorization
 import scalaz.~>
 import scalaz.concurrent.Task
 import scalaz.stream.Process
@@ -17,7 +18,8 @@ import scodec.bits.ByteVector
 
 final class Http4sConsulClient(baseUri: Uri,
                                client: Client,
-                               accessToken: Option[String] = None) extends (ConsulOp ~> Task) {
+                               accessToken: Option[String] = None,
+                               credentials: Option[(String,String)] = None) extends (ConsulOp ~> Task) {
   private implicit val responseDecoder: EntityDecoder[KvResponses] = jsonOf[KvResponses]
   private val log = Logger[this.type]
 
@@ -29,10 +31,13 @@ final class Http4sConsulClient(baseUri: Uri,
   def addHeader(req: Request): Request =
     accessToken.fold(req)(tok => req.putHeaders(Header("X-Consul-Token", tok)))
 
+  def addCreds(req: Request): Request =
+    credentials.fold(req){case (un,pw) => req.putHeaders(Authorization(BasicCredentials(un,pw)))}
+
   def get(key: Key): Task[String] = {
     for {
       _ <- Task.delay(log.debug(s"fetching consul key $key"))
-      kvs <- client.expect[KvResponses](addHeader(Request(uri = baseUri / "v1" / "kv" / key)))
+      kvs <- client.expect[KvResponses](addCreds(addHeader(Request(uri = baseUri / "v1" / "kv" / key))))
       head <- keyValue(key, kvs)
     } yield {
       log.debug(s"consul value for key $key is $kvs")
@@ -44,9 +49,9 @@ final class Http4sConsulClient(baseUri: Uri,
     for {
       _ <- Task.delay(log.debug(s"setting consul key $key to $value"))
       response <- client.expect[String](
-        addHeader(
+        addCreds(addHeader(
           Request(
             uri = baseUri / "v1" / "kv" / key,
-            body = Process.emit(ByteVector.view(value.getBytes("UTF-8"))))))
+            body = Process.emit(ByteVector.view(value.getBytes("UTF-8")))))))
     } yield log.debug(s"setting consul key $key resulted in response $response")
 }
