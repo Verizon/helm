@@ -15,7 +15,8 @@ import _root_.dispatch._, _root_.dispatch.Defaults._
 final class DispatchConsulClient(baseUri: Req,
                                  client: Http,
                                  executionContext: ExecutionContext,
-                                 accessToken: Option[String] = None) extends (ConsulOp ~> Task) {
+                                 accessToken: Option[String] = None,
+                                 credentials: Option[(String,String)] = None) extends (ConsulOp ~> Task) {
   private val log = Logger[this.type]
 
   implicitly[DecodeJson[KvResponse]]
@@ -37,8 +38,11 @@ final class DispatchConsulClient(baseUri: Req,
   def addToken(req: Req): Req = 
     accessToken.fold(req)(tok => req <:< Map("X-Consul-Token" -> tok))
 
+  def addCredentials(req: Req): Req = 
+    credentials.fold(req){case (un,pw) => req.as_!(un, pw)}
+
   def set(key: Key, value: String): Task[Unit] = {
-    val req = addToken((baseUri / "v1" / "kv" / key).PUT << value)
+    val req = addCredentials(addToken((baseUri / "v1" / "kv" / key).PUT << value))
 
     for {
       _ <- Task.delay(log.debug(s"setting consul key $key to $value"))
@@ -51,7 +55,7 @@ final class DispatchConsulClient(baseUri: Req,
   def get(key: Key): Task[String] =
     for {
       _ <- Task.delay(log.debug(s"fetching consul key $key"))
-      res <- fromScalaFuture(client(addToken(baseUri / "v1" / "kv" / key)))(executionContext).map(_.getResponseBody)
+      res <- fromScalaFuture(client(addCredentials(addToken(baseUri / "v1" / "kv" / key))))(executionContext).map(_.getResponseBody)
       _ = log.debug(s"consul response for key $key: $res")
       decoded <- Parse.decodeEither[KvResponses](res).fold(e => Task.fail(new Exception(e)), Task.now)
       head <- keyValue(key, decoded)
