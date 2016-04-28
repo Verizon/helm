@@ -7,6 +7,7 @@ metadata.settings
 
 libraryDependencies ++= Seq(
   "net.databinder.dispatch" %% "dispatch-core" % "0.11.2",
+  "verizon.inf.delorean" %% "core" % "1.1.+",
   journal.core
 )
 
