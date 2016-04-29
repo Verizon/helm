@@ -2,9 +2,10 @@ package consul
 package dispatch
 
 import journal.Logger
+import delorean._
 
 import scalaz.{~>,\/}
-import scalaz.concurrent.Task
+import scalaz.concurrent.{Strategy, Task}
 import scalaz.syntax.std.option._
 import scalaz.syntax.functor._
 import scala.util.{Success,Failure}
@@ -15,20 +16,13 @@ import _root_.dispatch._, _root_.dispatch.Defaults._
 final class DispatchConsulClient(baseUri: Req,
                                  client: Http,
                                  executionContext: ExecutionContext,
+                                 strategy: Strategy,
                                  accessToken: Option[String] = None,
                                  credentials: Option[(String,String)] = None) extends (ConsulOp ~> Task) {
   private val log = Logger[this.type]
 
   implicitly[DecodeJson[KvResponse]]
   implicitly[DecodeJson[KvResponses]]
-
-  def fromScalaFuture[A](a: Future[A])(e: ExecutionContext): Task[A] =
-    Task async { k =>
-      a.onComplete {
-        case Success(t) => k(\/.right(t))
-        case Failure(e) => k(\/.left(e))
-      }
-    }
 
   def apply[A](op: ConsulOp[A]): Task[A] = op match {
     case ConsulOp.Get(key) => get(key)
@@ -47,7 +41,7 @@ final class DispatchConsulClient(baseUri: Req,
 
     for {
       _ <- Task.delay(log.debug(s"setting consul key $key to $value"))
-      response <- fromScalaFuture(client(req))(executionContext)
+      response <- client(req).toTask(executionContext, strategy)
       status = response.getStatusCode()
       body = if(response.hasResponseBody()) response.getResponseBody else ""
     } yield log.debug(s"setting consul key $key resulted in status: $status response: $body")
@@ -56,7 +50,7 @@ final class DispatchConsulClient(baseUri: Req,
   def get(key: Key): Task[String] =
     for {
       _ <- Task.delay(log.debug(s"fetching consul key $key"))
-      res <- fromScalaFuture(client(addCredentials(addToken(baseUri / "v1" / "kv" / key))))(executionContext).map(_.getResponseBody)
+      res <- client(addCredentials(addToken(baseUri / "v1" / "kv" / key))).toTask(executionContext, strategy).map(_.getResponseBody)
       _ = log.debug(s"consul response for key $key: $res")
       decoded <- Parse.decodeEither[KvResponses](res).fold(e => Task.fail(new Exception(e)), Task.now)
       head <- keyValue(key, decoded)
