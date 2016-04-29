@@ -19,5 +19,5 @@ val h = host("127.0.0.1", 8500)
 val http = Http.configure(_.setAllowPoolingConnection(true).setConnectionTimeoutInMs(20000))
 import scala.concurrent.ExecutionContext.global
 
-val c = new DispatchConsulClient(h / "v1" / "kv", http, implicitly)
+val c = new DispatchConsulClient(h, http, implicitly)
 """

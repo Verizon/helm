@@ -1,5 +1,6 @@
 package consul
 
+import scala.collection.immutable.{Set => SSet}
 import scala.language.existentials
 import scalaz.{\/, Coyoneda, EitherT, Free, Monad}
 import argonaut.{DecodeJson, EncodeJson, StringWrap}, StringWrap.StringToParseWrap
@@ -11,6 +12,8 @@ object ConsulOp {
   final case class Get(key: Key) extends ConsulOp[String]
 
   final case class Set(key: Key, value: String) extends ConsulOp[Unit]
+
+  final case class ListKeys(prefix: Key) extends ConsulOp[SSet[String]]
 
   type ConsulOpF[A] = Free.FreeC[ConsulOp, A]
   type ConsulOpC[A] = Coyoneda[ConsulOp, A]
@@ -29,4 +32,7 @@ object ConsulOp {
 
   def setJson[A](key: Key, value: A)(implicit A: EncodeJson[A]): ConsulOpF[Unit] =
     set(key, A.encode(value).toString)
+
+  def listKeys(prefix: Key): ConsulOpF[SSet[String]] =
+    Free.liftFC(ListKeys(prefix))
 }

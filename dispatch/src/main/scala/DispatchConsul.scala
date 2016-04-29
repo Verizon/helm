@@ -33,6 +33,7 @@ final class DispatchConsulClient(baseUri: Req,
   def apply[A](op: ConsulOp[A]): Task[A] = op match {
     case ConsulOp.Get(key) => get(key)
     case ConsulOp.Set(key, value) => set(key, value)
+    case ConsulOp.ListKeys(prefix) => list(prefix)
   }
 
   def addToken(req: Req): Req = 
@@ -62,5 +63,14 @@ final class DispatchConsulClient(baseUri: Req,
     } yield {
       log.debug(s"consul value for key $key is $head")
       head.value
+    }
+
+  def list(prefix: Key): Task[Set[String]] =
+    for {
+      _ <- Task.delay(log.debug(s"fetching list of consul keys prefixed by $prefix"))
+      res <- fromScalaFuture(client(addCredentials(addToken(baseUri / "v1" / "kv" / prefix <<? Map("keys" -> "")))))(executionContext).map(_.getResponseBody)
+      decoded <- Parse.decodeEither[List[String]](res).fold(e => Task.fail(new Exception(e)), Task.now)
+    } yield {
+      decoded.toSet
     }
 }
