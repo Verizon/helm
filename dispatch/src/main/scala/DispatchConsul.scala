@@ -28,6 +28,7 @@ final class DispatchConsulClient(baseUri: Req,
     case ConsulOp.Get(key) => get(key)
     case ConsulOp.Set(key, value) => set(key, value)
     case ConsulOp.ListKeys(prefix) => list(prefix)
+    case ConsulOp.Delete(key) => delete(key)
   }
 
   def addToken(req: Req): Req = 
@@ -59,10 +60,22 @@ final class DispatchConsulClient(baseUri: Req,
       head.value
     }
 
+  def delete(key: Key): Task[Unit] = {
+    val req = addCredentials(addToken((baseUri / "v1" / "kv" / key).DELETE))
+    for {
+      _ <- Task.delay(log.debug(s"deleting $key from consul"))
+      response <- client(req).toTask(executionContext, strategy)
+      status = response.getStatusCode()
+      body = if(response.hasResponseBody()) response.getResponseBody else ""
+    } yield log.debug(s"deleting $key from consul resulted in status: $status response: $body")
+  }
+
+
+
   def list(prefix: Key): Task[Set[String]] =
     for {
       _ <- Task.delay(log.debug(s"fetching list of consul keys prefixed by $prefix"))
-      res <- fromScalaFuture(client(addCredentials(addToken(baseUri / "v1" / "kv" / prefix <<? Map("keys" -> "")))))(executionContext).map(_.getResponseBody)
+      res <- client(addCredentials(addToken(baseUri / "v1" / "kv" / prefix <<? Map("keys" -> "")))).toTask.map(_.getResponseBody)
       decoded <- Parse.decodeEither[List[String]](res).fold(e => Task.fail(new Exception(e)), Task.now)
     } yield {
       decoded.toSet

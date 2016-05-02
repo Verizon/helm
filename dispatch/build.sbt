@@ -14,11 +14,12 @@ libraryDependencies ++= Seq(
 (initialCommands in console) := """
 import consul._
 import dispatch._
+import scalaz.concurrent.Strategy
 import _root_.dispatch._, _root_.dispatch.Defaults._
 
 val h = host("127.0.0.1", 8500)
 val http = Http.configure(_.setAllowPoolingConnection(true).setConnectionTimeoutInMs(20000))
 import scala.concurrent.ExecutionContext.global
 
-val c = new DispatchConsulClient(h, http, implicitly)
+val c = new DispatchConsulClient(h, http, implicitly,Strategy.DefaultStrategy)
 """

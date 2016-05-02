@@ -30,6 +30,7 @@ final class Http4sConsulClient(baseUri: Uri,
     case ConsulOp.Get(key) => get(key)
     case ConsulOp.Set(key, value) => set(key, value)
     case ConsulOp.ListKeys(prefix) => list(prefix)
+    case ConsulOp.Delete(key) => delete(key)
   }
 
   def addHeader(req: Request): Request =
@@ -54,7 +55,7 @@ final class Http4sConsulClient(baseUri: Uri,
       _ <- Task.delay(log.debug(s"setting consul key $key to $value"))
       response <- client.expect[String](
         addCreds(addHeader(
-          Request(
+          Request(Method.PUT,
             uri = baseUri / "v1" / "kv" / key,
             body = Process.emit(ByteVector.view(value.getBytes("UTF-8")))))))
     } yield log.debug(s"setting consul key $key resulted in response $response")
@@ -69,5 +70,14 @@ final class Http4sConsulClient(baseUri: Uri,
       log.debug(s"listing of keys: " + response)
       response.toSet
     }
+  }
+
+  def delete(key: Key): Task[Unit] = {
+    val req = addCreds(addHeader(Request(Method.DELETE, uri = (baseUri / "v1" / "kv" / key))))
+
+    for {
+      _ <- Task.delay(log.debug(s"deleting $key from the consul KV store"))
+      response <- client.expect[String](req)
+    } yield log.debug(s"response from delete: " + response)
   }
 }

@@ -13,6 +13,8 @@ object ConsulOp {
 
   final case class Set(key: Key, value: String) extends ConsulOp[Unit]
 
+  final case class Delete(key: Key) extends ConsulOp[Unit]
+
   final case class ListKeys(prefix: Key) extends ConsulOp[SSet[String]]
 
   type ConsulOpF[A] = Free.FreeC[ConsulOp, A]
@@ -32,6 +34,9 @@ object ConsulOp {
 
   def setJson[A](key: Key, value: A)(implicit A: EncodeJson[A]): ConsulOpF[Unit] =
     set(key, A.encode(value).toString)
+
+  def delete(key: Key): ConsulOpF[Unit] = 
+    Free.liftFC(Delete(key))
 
   def listKeys(prefix: Key): ConsulOpF[SSet[String]] =
     Free.liftFC(ListKeys(prefix))
