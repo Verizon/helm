@@ -26,10 +26,8 @@ class BedazzledHttp4sClientTests extends FlatSpec with Matchers with TypeChecked
     val responseBody = body("ERROR!")
     val response = Response(status = Status.InternalServerError, body = responseBody)
     val client = constantResponseClient(response)
-    client.expect[String](dummyRequest).attemptRun.leftMap{
-      case NonSuccessResponse(req, res) => (res.status, res.body)
-    } should ===(
-      \/.left((Status.InternalServerError, responseBody)))
+    client.expect[String](dummyRequest).attemptRun should ===(
+      \/.left(NonSuccessResponse(Status.InternalServerError)))
   }
 
   it should "add the decoder Accept header" in {
