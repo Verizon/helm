@@ -23,10 +23,8 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
-    consul.run(csl, ConsulOp.get("foo")).attemptRun.leftMap{
-      case NonSuccessResponse(req, res) => (res.status, res.body)
-    } should ===(
-      \/.left((Status.InternalServerError, response.body)))
+    consul.run(csl, ConsulOp.get("foo")).attemptRun should ===(
+      \/.left(NonSuccessResponse(Status.InternalServerError)))
   }
 
   "set" should "succeed when the response is 200" in {
@@ -39,10 +37,8 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
-    consul.run(csl, ConsulOp.set("foo", "bar")).attemptRun.leftMap{
-      case NonSuccessResponse(req, res) => (res.status, res.body)
-    } should ===(
-      \/.left((Status.InternalServerError, response.body)))
+    consul.run(csl, ConsulOp.set("foo", "bar")).attemptRun should ===(
+      \/.left(NonSuccessResponse(Status.InternalServerError)))
   }
 }
 
