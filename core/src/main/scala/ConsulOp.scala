@@ -3,13 +3,15 @@ package consul
 import scala.collection.immutable.{Set => SSet}
 import scala.language.existentials
 import scalaz.{\/, Coyoneda, EitherT, Free, Monad}
+import scalaz.std.option._
+import scalaz.syntax.traverse._
 import argonaut.{DecodeJson, EncodeJson, StringWrap}, StringWrap.StringToParseWrap
 
 sealed abstract class ConsulOp[A] extends Product with Serializable
 
 object ConsulOp {
 
-  final case class Get(key: Key) extends ConsulOp[String]
+  final case class Get(key: Key) extends ConsulOp[Option[String]]
 
   final case class Set(key: Key, value: String) extends ConsulOp[Unit]
 
@@ -23,11 +25,11 @@ object ConsulOp {
   // this shouldn't be necessary, but we need to help the compiler out a bit
   implicit val consulOpFMonad: Monad[ConsulOpF] = Free.freeMonad[ConsulOpC]
 
-  def get(key: Key): ConsulOpF[String] =
+  def get(key: Key): ConsulOpF[Option[String]] =
     Free.liftFC(Get(key))
 
-  def getJson[A:DecodeJson](key: Key): EitherT[ConsulOpF, Err, A] =
-    EitherT[ConsulOpF, Err, A](get(key).map(_.decodeEither[A]))
+  def getJson[A:DecodeJson](key: Key): ConsulOpF[Err \/ Option[A]] =
+    get(key).map(_.traverseU(_.decodeEither[A]))
 
   def set(key: Key, value: String): ConsulOpF[Unit] =
     Free.liftFC(Set(key, value))

@@ -8,11 +8,14 @@ import org.http4s._
 import org.http4s.client._
 import org.http4s.argonaut.jsonOf
 import org.http4s.headers.Authorization
+import org.http4s.Status.{Ok, NotFound}
 import scalaz.~>
 import scalaz.concurrent.Task
 import scalaz.stream.Process
+import scalaz.std.option._
 import scalaz.syntax.std.option._
 import scalaz.syntax.functor._
+import scalaz.syntax.traverse._
 
 import scodec.bits.ByteVector
 
@@ -39,14 +42,18 @@ final class Http4sConsulClient(baseUri: Uri,
   def addCreds(req: Request): Request =
     credentials.fold(req){case (un,pw) => req.putHeaders(Authorization(BasicCredentials(un,pw)))}
 
-  def get(key: Key): Task[String] = {
+  def get(key: Key): Task[Option[String]] = {
     for {
       _ <- Task.delay(log.debug(s"fetching consul key $key"))
-      kvs <- client.expect[KvResponses](addCreds(addHeader(Request(uri = baseUri / "v1" / "kv" / key))))
-      head <- keyValue(key, kvs)
+      kvs <- client.fetch(addCreds(addHeader(Request(uri = baseUri / "v1" / "kv" / key)))) {
+        case Ok(resp) => resp.as[KvResponses].map(Some.apply)
+        case NotFound(_) => Task.now(None)
+        case resp => Task.fail(NonSuccessResponse(resp.status))
+      }
+      head <- kvs.traverse(keyValue(key, _))
     } yield {
       log.debug(s"consul value for key $key is $kvs")
-      head.value
+      head.map(_.value)
     }
   }
 
