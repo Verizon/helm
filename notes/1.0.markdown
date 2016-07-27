@@ -1,0 +1,3 @@
++ `get` returns a `Task[Option]` to account for missing keys. https://github.oncue.verizon.net/iptv/consul/pull/17
++ `getJson` returns an `Task[Err \/ Option[A]]` to account for missing keys. https://github.oncue.verizon.net/iptv/consul/pull/17
++ Dispatch client has been discontinued.  Use http4s.  https://github.oncue.verizon.net/iptv/consul/pull/17
