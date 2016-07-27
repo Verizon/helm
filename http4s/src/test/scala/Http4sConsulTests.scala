@@ -13,11 +13,18 @@ import org.scalactic.TypeCheckedTripleEquals
 class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEquals {
   import Http4sConsulTests._
 
-  "get" should "succeed when the response is 200" in {
+  "get" should "succeed with some when the response is 200" in {
     val response = consulResponse(Status.Ok, "yay")
     val csl = constantConsul(response)
     consul.run(csl, ConsulOp.get("foo")).attemptRun should ===(
-      \/.right("yay"))
+      \/.right(Some("yay")))
+  }
+
+  "get" should "succeed with some when the response is 404" in {
+    val response = consulResponse(Status.NotFound, "nope")
+    val csl = constantConsul(response)
+    consul.run(csl, ConsulOp.get("foo")).attemptRun should ===(
+      \/.right(None))
   }
 
   it should "fail when the response is 500" in {
