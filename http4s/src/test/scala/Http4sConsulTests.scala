@@ -1,12 +1,12 @@
 package consul
 package http4s
 
-import BedazzledHttp4sClient.NonSuccessResponse
 import BedazzledHttp4sClientTests._
 
 import scalaz.{\/, ~>}
 import scalaz.concurrent.Task
 import org.http4s.{Response, Status, Uri}
+import org.http4s.client.UnexpectedStatus
 import org.scalatest._, Matchers._
 import org.scalactic.TypeCheckedTripleEquals
 
@@ -20,7 +20,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
       \/.right(Some("yay")))
   }
 
-  "get" should "succeed with some when the response is 404" in {
+  "get" should "succeed with none when the response is 404" in {
     val response = consulResponse(Status.NotFound, "nope")
     val csl = constantConsul(response)
     consul.run(csl, ConsulOp.get("foo")).attemptRun should ===(
@@ -31,7 +31,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
     consul.run(csl, ConsulOp.get("foo")).attemptRun should ===(
-      \/.left(NonSuccessResponse(Status.InternalServerError)))
+      \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "set" should "succeed when the response is 200" in {
@@ -45,7 +45,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
     consul.run(csl, ConsulOp.set("foo", "bar")).attemptRun should ===(
-      \/.left(NonSuccessResponse(Status.InternalServerError)))
+      \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 }
 
