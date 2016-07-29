@@ -2,7 +2,6 @@ package consul
 package http4s
 
 import journal.Logger
-import BedazzledHttp4sClient._
 
 import org.http4s._
 import org.http4s.client._

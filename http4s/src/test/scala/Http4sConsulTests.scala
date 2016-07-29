@@ -1,12 +1,12 @@
 package consul
 package http4s
 
-import BedazzledHttp4sClientTests._
-
-import scalaz.{\/, ~>}
+import scalaz.{\/, ~>, Kleisli}
 import scalaz.concurrent.Task
-import org.http4s.{Response, Status, Uri}
-import org.http4s.client.UnexpectedStatus
+import scalaz.stream.Process
+import scodec.bits.ByteVector
+import org.http4s.{EntityBody, Request, Response, Status, Uri}
+import org.http4s.client._
 import org.scalatest._, Matchers._
 import org.scalactic.TypeCheckedTripleEquals
 
@@ -64,4 +64,14 @@ object Http4sConsulTests {
     val responseBody = body(s"""[{"Value": "$base64"}]""")
     Response(status = status, body = responseBody)
   }
+
+  def constantResponseClient(response: Response): Client = {
+    val dispResponse = DisposableResponse(response, Task.now(()))
+    Client(Kleisli{req => Task.now(dispResponse)}, Task.now(()))
+  }
+
+  def body(s: String): EntityBody =
+    Process.emit(ByteVector.encodeUtf8(s).right.get) // YOLO
+
+  val dummyRequest: Request = Request()  
 }
