@@ -2,7 +2,6 @@ package consul
 package http4s
 
 import journal.Logger
-import BedazzledHttp4sClient._
 
 import org.http4s._
 import org.http4s.client._
@@ -45,10 +44,9 @@ final class Http4sConsulClient(baseUri: Uri,
   def get(key: Key): Task[Option[String]] = {
     for {
       _ <- Task.delay(log.debug(s"fetching consul key $key"))
-      kvs <- client.fetch(addCreds(addHeader(Request(uri = baseUri / "v1" / "kv" / key)))) {
-        case Ok(resp) => resp.as[KvResponses].map(Some.apply)
-        case NotFound(_) => Task.now(None)
-        case resp => Task.fail(NonSuccessResponse(resp.status))
+      req = Request(uri = baseUri / "v1" / "kv" / key)
+      kvs <- client.expect[KvResponses](req).map(Some.apply).handleWith {
+        case UnexpectedStatus(NotFound) => Task.now(None)
       }
       head <- kvs.traverse(keyValue(key, _))
     } yield {

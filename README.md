@@ -12,7 +12,7 @@ http4s library.
 
 Add the following to your build.sbt:
 
-    libraryDependencies += "verizon.inf.consul" %% "http4s" % "1.0.+"
+    libraryDependencies += "verizon.inf.consul" %% "http4s" % "1.1.+"
 
 === ConsulOp
 
