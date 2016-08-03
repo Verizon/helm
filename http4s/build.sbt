@@ -6,7 +6,7 @@ common.settings
 metadata.settings
 
 val http4sOrg = "verizon.thirdparty.http4s"
-val http4sVersion = "0.1400.+"
+val http4sVersion = "0.1400.29"
 
 libraryDependencies ++= Seq(
   http4sOrg %% "http4s-blaze-client" % http4sVersion,
