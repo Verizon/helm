@@ -21,18 +21,18 @@ import scodec.bits.ByteVector
 final class Http4sConsulClient(baseUri: Uri,
                                client: Client,
                                accessToken: Option[String] = None,
-                               credentials: Option[(String,String)] = None) extends (HelmOp ~> Task) {
+                               credentials: Option[(String,String)] = None) extends (ConsulOp ~> Task) {
 
   private implicit val responseDecoder: EntityDecoder[KvResponses] = jsonOf[KvResponses]
   private implicit val keysDecoder: EntityDecoder[List[String]] = jsonOf[List[String]]
 
   private val log = Logger[this.type]
 
-  def apply[A](op: HelmOp[A]): Task[A] = op match {
-    case HelmOp.Get(key) => get(key)
-    case HelmOp.Set(key, value) => set(key, value)
-    case HelmOp.ListKeys(prefix) => list(prefix)
-    case HelmOp.Delete(key) => delete(key)
+  def apply[A](op: ConsulOp[A]): Task[A] = op match {
+    case ConsulOp.Get(key) => get(key)
+    case ConsulOp.Set(key, value) => set(key, value)
+    case ConsulOp.ListKeys(prefix) => list(prefix)
+    case ConsulOp.Delete(key) => delete(key)
   }
 
   def addHeader(req: Request): Request =

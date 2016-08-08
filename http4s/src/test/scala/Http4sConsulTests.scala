@@ -16,35 +16,35 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
   "get" should "succeed with some when the response is 200" in {
     val response = consulResponse(Status.Ok, "yay")
     val csl = constantConsul(response)
-    helm.run(csl, HelmOp.get("foo")).attemptRun should ===(
+    helm.run(csl, ConsulOp.get("foo")).attemptRun should ===(
       \/.right(Some("yay")))
   }
 
   "get" should "succeed with none when the response is 404" in {
     val response = consulResponse(Status.NotFound, "nope")
     val csl = constantConsul(response)
-    helm.run(csl, HelmOp.get("foo")).attemptRun should ===(
+    helm.run(csl, ConsulOp.get("foo")).attemptRun should ===(
       \/.right(None))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
-    helm.run(csl, HelmOp.get("foo")).attemptRun should ===(
+    helm.run(csl, ConsulOp.get("foo")).attemptRun should ===(
       \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "set" should "succeed when the response is 200" in {
     val response = consulResponse(Status.Ok, "yay")
     val csl = constantConsul(response)
-    helm.run(csl, HelmOp.set("foo", "bar")).attemptRun should ===(
+    helm.run(csl, ConsulOp.set("foo", "bar")).attemptRun should ===(
       \/.right(()))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
-    helm.run(csl, HelmOp.set("foo", "bar")).attemptRun should ===(
+    helm.run(csl, ConsulOp.set("foo", "bar")).attemptRun should ===(
       \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 }
@@ -52,7 +52,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
 object Http4sConsulTests {
   private val base64Encoder = java.util.Base64.getEncoder
 
-  def constantConsul(response: Response): HelmOp ~> Task = {
+  def constantConsul(response: Response): ConsulOp ~> Task = {
     new Http4sConsulClient(
       Uri.uri("http://localhost:8500/v1/kv/v1"),
       constantResponseClient(response),

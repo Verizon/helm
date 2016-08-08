@@ -18,17 +18,17 @@ Add the following to your build.sbt:
 
     libraryDependencies += "verizon.inf.helm" %% "http4s" % "1.1.+"
 
-### HelmOp
+### ConsulOp
 
-Consul operations are specified by the `HelmOp` algebra.  Two
+Consul operations are specified by the `ConsulOp` algebra.  Two
 examples are `get` and `set`:
 
 ```
 import helm._
 
-val s: HelmOpF[Unit] = : HelmOp.set("key", "value")
+val s: ConsulOpF[Unit] = : ConsulOp.set("key", "value")
 
-val g: HelmOpF[Option[String]] = : HelmOp.get("key")
+val g: ConsulOpF[Option[String]] = : ConsulOp.get("key")
 ```
 
 These are however just descriptions of what operations we might
@@ -58,9 +58,9 @@ which actually interact with consul.
 ```
 import scalaz.concurrent.Task
 
-val s: Task[Unit] = helm.run(HelmOp.set("testkey", "testvalue"))(interpreter)
+val s: Task[Unit] = helm.run(ConsulOp.set("testkey", "testvalue"))(interpreter)
 
-val g: Task[String] = helm.run(HelmOp.get("testkey"))(interpreter)
+val g: Task[String] = helm.run(ConsulOp.get("testkey"))(interpreter)
 
 s.run
 g.run
