@@ -1,4 +1,4 @@
-package consul
+package helm
 package http4s
 
 import journal.Logger

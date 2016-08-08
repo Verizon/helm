@@ -1,4 +1,4 @@
-package consul
+package helm
 
 import scala.collection.immutable.{Set => SSet}
 import scala.language.existentials
@@ -23,7 +23,7 @@ object ConsulOp {
   type ConsulOpC[A] = Coyoneda[ConsulOp, A]
 
   // this shouldn't be necessary, but we need to help the compiler out a bit
-  implicit val consulOpFMonad: Monad[ConsulOpF] = Free.freeMonad[ConsulOpC]
+  implicit val ConsulOpFMonad: Monad[ConsulOpF] = Free.freeMonad[ConsulOpC]
 
   def get(key: Key): ConsulOpF[Option[String]] =
     Free.liftFC(Get(key))

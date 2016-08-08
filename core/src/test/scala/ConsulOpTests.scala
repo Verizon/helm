@@ -1,4 +1,4 @@
-package consul
+package helm
 
 import argonaut._, Argonaut._
 import scalaz.\/
