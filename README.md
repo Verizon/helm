@@ -1,6 +1,6 @@
-# Consul
+# Helm
 
-[![Build Status](https://travis.oncue.verizon.net/iptv/consul.svg?token=Lp2ZVD96vfT8T599xRfV&branch=master)](https://travis.oncue.verizon.net/iptv/consul)
+[![Build Status](https://travis.oncue.verizon.net/iptv/helm.svg?token=Lp2ZVD96vfT8T599xRfV&branch=master)](https://travis.oncue.verizon.net/iptv/helm)
 
 A client for getting / setting values from a consul KV store.
 
@@ -16,19 +16,19 @@ http4s library.
 
 Add the following to your build.sbt:
 
-    libraryDependencies += "verizon.inf.consul" %% "http4s" % "1.1.+"
+    libraryDependencies += "verizon.inf.helm" %% "http4s" % "1.1.+"
 
-### ConsulOp
+### HelmOp
 
-Consul operations are specified by the `ConsulOp` algebra.  Two
+Consul operations are specified by the `HelmOp` algebra.  Two
 examples are `get` and `set`:
 
 ```
-import consul._
+import helm._
 
-val s: ConsulOpF[Unit] = : ConsulOp.set("key", "value")
+val s: HelmOpF[Unit] = : HelmOp.set("key", "value")
 
-val g: ConsulOpF[Option[String]] = : ConsulOp.get("key")
+val g: HelmOpF[Option[String]] = : HelmOp.get("key")
 ```
 
 These are however just descriptions of what operations we might
@@ -42,7 +42,7 @@ First we create an interpreter, which requires an http4s client and
 a base url for consul:
 
 ```
-import consul.http4s._
+import helm.http4s._
 import org.http4s.Uri.uri
 import org.http4s.client.blaze.PooledHttp1Client
 
@@ -58,9 +58,9 @@ which actually interact with consul.
 ```
 import scalaz.concurrent.Task
 
-val s: Task[Unit] = consul.run(ConsulOp.set("testkey", "testvalue"))(interpreter)
+val s: Task[Unit] = helm.run(HelmOp.set("testkey", "testvalue"))(interpreter)
 
-val g: Task[String] = consul.run(ConsulOp.get("testkey"))(interpreter)
+val g: Task[String] = helm.run(HelmOp.get("testkey"))(interpreter)
 
 s.run
 g.run

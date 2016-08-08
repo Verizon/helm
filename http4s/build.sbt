@@ -1,4 +1,4 @@
-import consul.Dependencies._
+import Dependencies._
 import verizon.build._
 
 common.settings
@@ -15,7 +15,7 @@ libraryDependencies ++= Seq(
 )
 
 (initialCommands in console) := """
-import consul._
+import helm._
 import http4s._
 
 import scala.concurrent.duration.{DurationInt,Duration}

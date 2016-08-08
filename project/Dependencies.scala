@@ -1,5 +1,3 @@
-package consul
-
 import sbt._
 
 object Dependencies {
