@@ -7,10 +7,15 @@ metadata.settings
 
 val http4sOrg = "verizon.thirdparty.http4s"
 val http4sVersion = "0.1400.29"
+val dockeritVersion = "0.9.0-M5"
+
+
 
 libraryDependencies ++= Seq(
-  http4sOrg %% "http4s-blaze-client" % http4sVersion,
-  http4sOrg %% "http4s-argonaut" % http4sVersion,
+  http4sOrg     %% "http4s-blaze-client"         % http4sVersion,
+  http4sOrg     %% "http4s-argonaut"             % http4sVersion,
+  "com.spotify"  % "docker-client"               % "3.5.12",
+  "com.whisk"   %% "docker-testkit-scalatest"    % dockeritVersion % "test",
   journal.core
 )
 
