@@ -13,11 +13,7 @@ package object helm {
   private val base64Decoder = java.util.Base64.getDecoder
   private val base64StringDecoder: DecodeJson[String] =
     DecodeJson.optionDecoder(json =>
-      if(json.isNull) {
-        Some("")
-      } else {
         json.string.flatMap(s => DecodeJson.tryTo(new String(base64Decoder.decode(s), "utf-8")))
-      }
         , "base 64 string")
 
   private[helm] implicit val KvResponseDecoder: DecodeJson[KvResponse] =

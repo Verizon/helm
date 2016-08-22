@@ -61,7 +61,7 @@ object Http4sConsulTests {
 
   def consulResponse(status: Status, s: String): Response = {
     val base64 = new String(base64Encoder.encode(s.getBytes("utf-8")), "utf-8")
-    val responseBody = body(s"""[{"Value": "$base64"}]""")
+    val responseBody = body(s)
     Response(status = status, body = responseBody)
   }
 

@@ -44,14 +44,13 @@ final class Http4sConsulClient(baseUri: Uri,
   def get(key: Key): Task[Option[String]] = {
     for {
       _ <- Task.delay(log.debug(s"fetching consul key $key"))
-      req = Request(uri = baseUri / "v1" / "kv" / key)
-      kvs <- client.expect[KvResponses](req).map(Some.apply).handleWith {
+      req = Request(uri = (baseUri / "v1" / "kv" / key).+?("raw"))
+      value <- client.expect[String](req).map(Some.apply).handleWith {
         case UnexpectedStatus(NotFound) => Task.now(None)
       }
-      head <- kvs.traverse(keyValue(key, _))
     } yield {
-      log.debug(s"consul value for key $key is $kvs")
-      head.map(_.value)
+      log.debug(s"consul value for key $key is $value")
+      value
     }
   }
 
