@@ -11,11 +11,6 @@ import org.http4s.Status.{Ok, NotFound}
 import scalaz.~>
 import scalaz.concurrent.Task
 import scalaz.stream.Process
-import scalaz.std.option._
-import scalaz.syntax.std.option._
-import scalaz.syntax.functor._
-import scalaz.syntax.traverse._
-
 import scodec.bits.ByteVector
 
 final class Http4sConsulClient(baseUri: Uri,
@@ -23,7 +18,6 @@ final class Http4sConsulClient(baseUri: Uri,
                                accessToken: Option[String] = None,
                                credentials: Option[(String,String)] = None) extends (ConsulOp ~> Task) {
 
-  private implicit val responseDecoder: EntityDecoder[KvResponses] = jsonOf[KvResponses]
   private implicit val keysDecoder: EntityDecoder[List[String]] = jsonOf[List[String]]
 
   private val log = Logger[this.type]
