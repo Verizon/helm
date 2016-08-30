@@ -11,11 +11,6 @@ import org.http4s.Status.{Ok, NotFound}
 import scalaz.~>
 import scalaz.concurrent.Task
 import scalaz.stream.Process
-import scalaz.std.option._
-import scalaz.syntax.std.option._
-import scalaz.syntax.functor._
-import scalaz.syntax.traverse._
-
 import scodec.bits.ByteVector
 
 final class Http4sConsulClient(baseUri: Uri,
@@ -23,7 +18,6 @@ final class Http4sConsulClient(baseUri: Uri,
                                accessToken: Option[String] = None,
                                credentials: Option[(String,String)] = None) extends (ConsulOp ~> Task) {
 
-  private implicit val responseDecoder: EntityDecoder[KvResponses] = jsonOf[KvResponses]
   private implicit val keysDecoder: EntityDecoder[List[String]] = jsonOf[List[String]]
 
   private val log = Logger[this.type]
@@ -44,14 +38,13 @@ final class Http4sConsulClient(baseUri: Uri,
   def get(key: Key): Task[Option[String]] = {
     for {
       _ <- Task.delay(log.debug(s"fetching consul key $key"))
-      req = Request(uri = baseUri / "v1" / "kv" / key)
-      kvs <- client.expect[KvResponses](req).map(Some.apply).handleWith {
+      req = Request(uri = (baseUri / "v1" / "kv" / key).+?("raw"))
+      value <- client.expect[String](req).map(Some.apply).handleWith {
         case UnexpectedStatus(NotFound) => Task.now(None)
       }
-      head <- kvs.traverse(keyValue(key, _))
     } yield {
-      log.debug(s"consul value for key $key is $kvs")
-      head.map(_.value)
+      log.debug(s"consul value for key $key is $value")
+      value
     }
   }
 
