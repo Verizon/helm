@@ -1,8 +1,5 @@
-import verizon.build._
 
-common.settings
-
-ghrelease.settings
+enablePlugins(GithubReleasePlugin)
 
 teamName in Global := Some("inf")
 
