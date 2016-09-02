@@ -1,8 +1,5 @@
-import verizon.build._
 
-common.settings
-
-metadata.settings
+enablePlugins(MetadataPlugin)
 
 libraryDependencies ++= Seq(
   "io.argonaut"                %% "argonaut"          % "6.1",

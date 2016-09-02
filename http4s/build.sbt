@@ -1,15 +1,8 @@
 import Dependencies._
-import verizon.build._
-
-common.settings
-
-metadata.settings
 
 val http4sOrg = "verizon.thirdparty.http4s"
 val http4sVersion = "0.1400.29"
 val dockeritVersion = "0.9.0-M5"
-
-
 
 libraryDependencies ++= Seq(
   http4sOrg     %% "http4s-blaze-client"         % http4sVersion,
