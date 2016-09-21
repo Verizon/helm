@@ -12,6 +12,7 @@ import scalaz.~>
 import scalaz.concurrent.Task
 import scalaz.stream.Process
 import scodec.bits.ByteVector
+import scala.collection.immutable.{Set => SSet}
 
 final class Http4sConsulClient(baseUri: Uri,
                                client: Client,
@@ -23,10 +24,11 @@ final class Http4sConsulClient(baseUri: Uri,
   private val log = Logger[this.type]
 
   def apply[A](op: ConsulOp[A]): Task[A] = op match {
-    case ConsulOp.Get(key) => get(key)
-    case ConsulOp.Set(key, value) => set(key, value)
-    case ConsulOp.ListKeys(prefix) => list(prefix)
-    case ConsulOp.Delete(key) => delete(key)
+    case ConsulOp.Get(key)             => get(key)
+    case ConsulOp.Set(key, value)      => set(key, value)
+    case ConsulOp.ListKeys(prefix)     => list(prefix)
+    case ConsulOp.Delete(key)          => delete(key)
+    case ConsulOp.HealthCheck(service) => healthCheck(service)
   }
 
   def addHeader(req: Request): Request =
@@ -77,5 +79,16 @@ final class Http4sConsulClient(baseUri: Uri,
       _ <- Task.delay(log.debug(s"deleting $key from the consul KV store"))
       response <- client.expect[String](req)
     } yield log.debug(s"response from delete: " + response)
+  }
+
+  def healthCheck(service: String): Task[String] = {
+    for {
+      _ <- Task.delay(log.debug(s"fetching health status for $service"))
+      req = Request(uri = (baseUri / "v1" / "health" / "checks" / service))
+      response <- client.expect[String](req)
+    } yield {
+      log.debug(s"health check response: " + response)
+      response
+    }
   }
 }
