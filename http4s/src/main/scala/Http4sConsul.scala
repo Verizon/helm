@@ -3,7 +3,6 @@ package http4s
 
 import journal.Logger
 
-import argonaut.DecodeJson
 import org.http4s._
 import org.http4s.client._
 import org.http4s.argonaut.jsonOf
@@ -83,7 +82,6 @@ final class Http4sConsulClient(baseUri: Uri,
   }
 
   def healthCheck(service: String): Task[String] = {
-    import org.http4s.argonaut._
     for {
       _ <- Task.delay(log.debug(s"fetching health status for $service"))
       req = Request(uri = (baseUri / "v1" / "health" / "checks" / service))

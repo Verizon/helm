@@ -4,10 +4,8 @@ import scala.collection.immutable.{Set => SSet}
 import scala.language.existentials
 import scalaz.{\/, Coyoneda, EitherT, Free, Monad}
 import scalaz.std.option._
-import scalaz.std.vector._
 import scalaz.syntax.traverse._
 import argonaut.{DecodeJson, EncodeJson, StringWrap}, StringWrap.StringToParseWrap
-
 
 sealed abstract class ConsulOp[A] extends Product with Serializable
 
@@ -53,4 +51,3 @@ object ConsulOp {
   def healthCheckJson[A:DecodeJson](service: String): ConsulOpF[Err \/ SSet[A]] =
     healthCheck(service).map(_.decodeEither[SSet[A]])
 }
-
