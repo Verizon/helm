@@ -31,7 +31,7 @@ final class Http4sConsulClient(baseUri: Uri,
     case ConsulOp.HealthCheck(service) => healthCheck(service)
   }
 
-  def addHeader(req: Request): Request =
+  def addConsulToken(req: Request): Request =
     accessToken.fold(req)(tok => req.putHeaders(Header("X-Consul-Token", tok)))
 
   def addCreds(req: Request): Request =
@@ -40,7 +40,7 @@ final class Http4sConsulClient(baseUri: Uri,
   def get(key: Key): Task[Option[String]] = {
     for {
       _ <- Task.delay(log.debug(s"fetching consul key $key"))
-      req = Request(uri = (baseUri / "v1" / "kv" / key).+?("raw"))
+      req = addCreds(addConsulToken(Request(uri = (baseUri / "v1" / "kv" / key).+?("raw"))))
       value <- client.expect[String](req).map(Some.apply).handleWith {
         case UnexpectedStatus(NotFound) => Task.now(None)
       }
@@ -54,14 +54,14 @@ final class Http4sConsulClient(baseUri: Uri,
     for {
       _ <- Task.delay(log.debug(s"setting consul key $key to $value"))
       response <- client.expect[String](
-        addCreds(addHeader(
+        addCreds(addConsulToken(
           Request(Method.PUT,
             uri = baseUri / "v1" / "kv" / key,
             body = Process.emit(ByteVector.view(value.getBytes("UTF-8")))))))
     } yield log.debug(s"setting consul key $key resulted in response $response")
 
   def list(prefix: Key): Task[Set[Key]] = {
-    val req = addCreds(addHeader(Request(uri = (baseUri / "v1" / "kv" / prefix).withQueryParam(QueryParam.fromKey("keys")))))
+    val req = addCreds(addConsulToken(Request(uri = (baseUri / "v1" / "kv" / prefix).withQueryParam(QueryParam.fromKey("keys")))))
 
     for {
       _ <- Task.delay(log.debug(s"listing key consul with the prefix: $prefix"))
@@ -73,7 +73,7 @@ final class Http4sConsulClient(baseUri: Uri,
   }
 
   def delete(key: Key): Task[Unit] = {
-    val req = addCreds(addHeader(Request(Method.DELETE, uri = (baseUri / "v1" / "kv" / key))))
+    val req = addCreds(addConsulToken(Request(Method.DELETE, uri = (baseUri / "v1" / "kv" / key))))
 
     for {
       _ <- Task.delay(log.debug(s"deleting $key from the consul KV store"))
@@ -84,7 +84,7 @@ final class Http4sConsulClient(baseUri: Uri,
   def healthCheck(service: String): Task[String] = {
     for {
       _ <- Task.delay(log.debug(s"fetching health status for $service"))
-      req = Request(uri = (baseUri / "v1" / "health" / "checks" / service))
+      req = addCreds(addConsulToken(Request(uri = (baseUri / "v1" / "health" / "checks" / service))))
       response <- client.expect[String](req)
     } yield {
       log.debug(s"health check response: " + response)
