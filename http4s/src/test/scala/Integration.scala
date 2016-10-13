@@ -16,15 +16,35 @@ import org.scalacheck._
 import org.scalatest._
 import org.scalatest.prop._
 
-trait DockerConsulService extends DockerKit {
+// This is how we use docker-kit.  Nothing specific to helm in this trait.
+trait DefaultDockerKit extends DockerKit {
+  override implicit val dockerFactory: DockerFactory = new DockerJavaExecutorFactory(
+    new Docker(DefaultDockerClientConfig.createDefaultConfigBuilder().build(),
+      factory = new NettyDockerCmdExecFactory()))
+
+  /** Get the docker host from the DOCKER_HOST environment variable, or 127.0.0.1 if undefined */
+  lazy val dockerHost: String = {
+    // i'm expecting protocol://ip:port
+    sys.env.get("DOCKER_HOST").flatMap { url =>
+      val parts = url.split(":")
+      if (parts.length == 3)
+        Some(parts(1).substring(2))
+      else None
+    }.getOrElse("127.0.0.1")
+  }
+}
+
+trait DockerConsulService extends DefaultDockerKit {
   private[this] val logger = Logger[DockerConsulService]
 
   override implicit val dockerFactory: DockerFactory = new DockerJavaExecutorFactory(
     new Docker(DefaultDockerClientConfig.createDefaultConfigBuilder().build(),
       factory = new NettyDockerCmdExecFactory()))
 
+  val ConsulPort = 18512
+
   val consulContainer = DockerContainer("progrium/consul")
-    .withPorts(8500 -> Some(18512))
+    .withPorts(8500 -> Some(ConsulPort))
     .withCommand("-server", "-bootstrap")
     .withLogLineReceiver(LogLineReceiver(true, s => logger.debug(s"consul: $s")))
     .withReadyChecker(DockerReadyChecker.LogLineContains("agent: Synced"))
@@ -42,20 +62,8 @@ class IntegrationSpec
 
   val client = PooledHttp1Client()
 
-  // i'm expecting protocol://ip:port
-  def parseDockerHost(url: String): Option[String] = {
-    val parts = url.split(":")
-    if(parts.length == 3)
-      Some(parts(1).substring(2))
-    else None
-  }
-
   val baseUrl: Uri =
-    (for {
-      url <- sys.env.get("DOCKER_HOST")
-      host <- parseDockerHost(url)
-      uri <- Uri.fromString(s"http://$host:18512").toOption
-    } yield uri).getOrElse(Uri.uri("http://127.0.0.1:18512"))
+    Uri.fromString(s"http://${dockerHost}:${ConsulPort}").valueOr(throw _)
 
   val interpreter = new Http4sConsulClient(baseUrl, client)
 
