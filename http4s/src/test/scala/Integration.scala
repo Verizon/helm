@@ -1,34 +1,52 @@
 package helm
 package http4s
 
+import scala.concurrent.duration.DurationInt
+
+import com.github.dockerjava.core.DefaultDockerClientConfig
+import com.github.dockerjava.netty.NettyDockerCmdExecFactory
 import com.whisk.docker._
-import org.scalatest._
-import org.scalatest.prop._
+import com.whisk.docker.impl.dockerjava.{Docker, DockerJavaExecutorFactory}
+import com.whisk.docker.scalatest._
+import journal.Logger
 import org.http4s._
 import org.http4s.client._
 import org.http4s.client.blaze._
-import scala.concurrent.duration.{Duration, DurationInt}
-import com.spotify.docker.client.DefaultDockerClient
-import com.spotify.docker.client.DockerClient
-import com.whisk.docker.impl.spotify.SpotifyDockerCommandExecutor
-import com.whisk.docker.scalatest._
 import org.scalacheck._
+import org.scalatest._
+import org.scalatest.prop._
 
-class SpotifyDockerFactory(client: DockerClient) extends DockerFactory {
+// This is how we use docker-kit.  Nothing specific to helm in this trait.
+trait DefaultDockerKit extends DockerKit {
+  override implicit val dockerFactory: DockerFactory = new DockerJavaExecutorFactory(
+    new Docker(DefaultDockerClientConfig.createDefaultConfigBuilder().build(),
+      factory = new NettyDockerCmdExecFactory()))
 
-  override def createExecutor(): DockerCommandExecutor = {
-    new SpotifyDockerCommandExecutor(client.getHost, client)
+  /** Get the docker host from the DOCKER_HOST environment variable, or 127.0.0.1 if undefined */
+  lazy val dockerHost: String = {
+    // i'm expecting protocol://ip:port
+    sys.env.get("DOCKER_HOST").flatMap { url =>
+      val parts = url.split(":")
+      if (parts.length == 3)
+        Some(parts(1).substring(2))
+      else None
+    }.getOrElse("127.0.0.1")
   }
 }
 
-trait DockerConsulService extends DockerKit {
+trait DockerConsulService extends DefaultDockerKit {
+  private[this] val logger = Logger[DockerConsulService]
 
-  override implicit val dockerFactory: DockerFactory =
-    new SpotifyDockerFactory(DefaultDockerClient.fromEnv().build())
+  override implicit val dockerFactory: DockerFactory = new DockerJavaExecutorFactory(
+    new Docker(DefaultDockerClientConfig.createDefaultConfigBuilder().build(),
+      factory = new NettyDockerCmdExecFactory()))
+
+  val ConsulPort = 18512
 
   val consulContainer = DockerContainer("progrium/consul")
-    .withPorts(8500 -> Some(18512))
+    .withPorts(8500 -> Some(ConsulPort))
     .withCommand("-server", "-bootstrap")
+    .withLogLineReceiver(LogLineReceiver(true, s => logger.debug(s"consul: $s")))
     .withReadyChecker(DockerReadyChecker.LogLineContains("agent: Synced"))
 
   abstract override def dockerContainers: List[DockerContainer] =
@@ -43,7 +61,10 @@ class IntegrationSpec
     with DockerConsulService with DockerTestKit {
 
   val client = PooledHttp1Client()
-  val baseUrl = Uri.uri("http://127.0.0.1:18512")
+
+  val baseUrl: Uri =
+    Uri.fromString(s"http://${dockerHost}:${ConsulPort}").valueOr(throw _)
+
   val interpreter = new Http4sConsulClient(baseUrl, client)
 
   "consul" should "work" in check { (k: String, v: String) =>
