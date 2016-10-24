@@ -4,13 +4,8 @@
 
 A client for getting / setting values from a consul KV store.
 
-There are two supported clients, which differ only in which http
-client library they use. One uses [http4s](http://http4s.org) the
-other uses
-[dispatch](http://dispatch.databinder.net/Dispatch.html). We recommend
-the http4s client, but we also provide the dispatch client as an
-alternative for cases when there are dependency conflicts with the
-http4s library.
+There is currently one supported client, which uses [http4s](http://http4s.org)
+to make HTTP calls to consul.
 
 ## Getting Started
 
