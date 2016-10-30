@@ -11,7 +11,7 @@ to make HTTP calls to consul.
 
 Add the following to your build.sbt:
 
-    libraryDependencies += "verizon.inf.helm" %% "http4s" % "1.1.+"
+    libraryDependencies += "verizon.inf.helm" %% "http4s" % "1.2.+"
 
 ### ConsulOp
 
