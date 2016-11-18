@@ -1,5 +1,7 @@
 # Helm
 
+![Logo](docs/src/img/logo.png)
+
 [![Build Status](https://travis.oncue.verizon.net/iptv/helm.svg?token=Lp2ZVD96vfT8T599xRfV&branch=master)](https://travis.oncue.verizon.net/iptv/helm)
 
 A client for getting / setting values from a consul KV store.

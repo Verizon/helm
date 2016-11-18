@@ -1,7 +1,7 @@
 import Dependencies._
 
 val http4sOrg = "verizon.thirdparty.http4s"
-val http4sVersion = "0.1400.29"
+val http4sVersion = "1.2.+"
 val dockeritVersion = "0.9.0-M10"
 
 libraryDependencies ++= Seq(
