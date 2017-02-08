@@ -1,12 +1,12 @@
 import Dependencies._
 
-val http4sOrg = "verizon.thirdparty.http4s"
-val http4sVersion = "1.2.+"
-val dockeritVersion = "0.9.0-M10"
+val http4sOrg = "org.http4s"
+val http4sVersion = "0.15.3"
+val dockeritVersion = "0.9.0-RC1" // Last version before scalatest-3.0
 
 libraryDependencies ++= Seq(
   http4sOrg     %% "http4s-blaze-client"             % http4sVersion,
-  http4sOrg     %% "http4s-argonaut"                 % http4sVersion,
+  http4sOrg     %% "http4s-argonaut61"               % http4sVersion,
   "com.whisk"   %% "docker-testkit-scalatest"        % dockeritVersion % "test",
   "com.whisk"   %% "docker-testkit-impl-docker-java" % dockeritVersion % "test",
   journal.core
