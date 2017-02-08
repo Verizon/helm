@@ -7,7 +7,6 @@ import scalaz.concurrent.Task
 import scalaz.concurrent.Task.{delay, now}
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalactic.TypeCheckedTripleEquals
-import tortuga.test._
 import ConsulOp._
 
 class ConsulOpTests extends FlatSpec with Matchers with TypeCheckedTripleEquals {

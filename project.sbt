@@ -1,14 +1,14 @@
 
-enablePlugins(GithubReleasePlugin)
+organization in Global := "io.verizon.helm"
 
-teamName in Global := Some("inf")
+crossScalaVersions in Global := Seq("2.11.8", "2.10.6")
 
-projectName in Global := Some("helm")
-
-scalaVersion in Global := "2.11.7"
+scalaVersion in Global := crossScalaVersions.value.head
 
 lazy val helm = project.in(file(".")).aggregate(core, http4s)
 
 lazy val core = project
 
 lazy val http4s = project dependsOn core
+
+enablePlugins(DisablePublishingPlugin)
