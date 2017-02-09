@@ -14,6 +14,7 @@ import org.http4s.client._
 import org.http4s.client.blaze._
 import org.scalacheck._
 import org.scalatest._
+import org.scalatest.enablers.CheckerAsserting
 import org.scalatest.prop._
 
 // This is how we use docker-kit.  Nothing specific to helm in this trait.
@@ -43,11 +44,11 @@ trait DockerConsulService extends DefaultDockerKit {
 
   val ConsulPort = 18512
 
-  val consulContainer = DockerContainer("progrium/consul")
-    .withPorts(8500 -> Some(ConsulPort))
-    .withCommand("-server", "-bootstrap")
-    .withLogLineReceiver(LogLineReceiver(true, s => logger.debug(s"consul: $s")))
-    .withReadyChecker(DockerReadyChecker.LogLineContains("agent: Synced"))
+  val consulContainer =
+    DockerContainer("consul:0.7.0", name = Some("consul"))
+      .withPorts(8500 -> Some(ConsulPort))
+      .withLogLineReceiver(LogLineReceiver(true, s => logger.debug(s"consul: $s")))
+      .withReadyChecker(DockerReadyChecker.LogLineContains("agent: Synced"))
 
   abstract override def dockerContainers: List[DockerContainer] =
     consulContainer :: super.dockerContainers
@@ -76,5 +77,5 @@ class IntegrationSpec
     helm.run(interpreter, ConsulOp.delete(k)).run
     helm.run(interpreter, ConsulOp.listKeys("")).run should not contain (k)
     true
-  }(implicitly, implicitly, Arbitrary(Gen.alphaStr suchThat(_.size > 0)), implicitly, implicitly, Arbitrary(Gen.alphaStr), implicitly, implicitly)
+  }(implicitly, implicitly, Arbitrary(Gen.alphaStr suchThat(_.size > 0)), implicitly, implicitly, Arbitrary(Gen.alphaStr), implicitly, implicitly, implicitly[CheckerAsserting[EntityDecoder[String]]], implicitly, implicitly)
 }
