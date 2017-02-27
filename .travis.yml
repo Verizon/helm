@@ -1,13 +1,13 @@
 language: scala
 
-scala:
-  - 2.10.6
-  - 2.11.8
-env:
-  - SCALAZ_VERSION=7.1.11
-
-jdk:
-  - oraclejdk8
+matrix:
+  include:
+    - jdk: oraclejdk8
+      scala: 2.10.6
+      env: SCALAZ_VERSION=7.1.11
+    - jdk: oraclejdk8
+      scala: 2.11.8
+      env: SCALAZ_VERSION=7.1.11
 
 branches:
   only:
@@ -24,9 +24,13 @@ script:
 after_success:
   - find $HOME/.sbt -name "*.lock" | xargs rm
   - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
-  # - "bash <(curl -s https://codecov.oncue.verizon.net/bash) -u https://codecov.oncue.verizon.net -r $TRAVIS_REPO_SLUG -t 334fb610-3377-46fb-8475-367e9d3e149a"
+  - "bash <(curl -s https://codecov.oncue.verizon.net/bash) -u https://codecov.oncue.verizon.net -r $TRAVIS_REPO_SLUG -t $CODECOV_TOKEN"
 
 cache:
   directories:
     - $HOME/.ivy2/cache
     - $HOME/.sbt/boot/scala-$TRAVIS_SCALA_VERSION
+
+env:
+  global:
+    - secure: "DZcuAGkuqTRPUXbk3lLS6uq3iGcMOdiqC95b/EkMnlyxvfQHvo7aDOXFtzv2GL1pWXBY969qy/YHnqUIMjP8eLBIO588mPUotlHztgVaG8hnf8YCfWjZmwGRz79/sZNlugBcIyYYTK7Whcgg5ssVWbJ/ubU09TF2dCiIMQhzq2U="
