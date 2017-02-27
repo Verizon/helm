@@ -12,9 +12,9 @@ A native [Scala](http://scala-lang.org) client for interacting with [Consul](htt
 
 Add the following to your `build.sbt`:
 
-    libraryDependencies += "verizon.inf.helm" %% "http4s" % "1.2.+"
+    libraryDependencies += "io.verizon.helm" %% "http4s" % "1.3.+"
 
-The *Helm* binaries are located on maven central, so no additional resolvers are needed. 
+The *Helm* binaries are located on maven central, so no additional resolvers are needed.
 
 ### Algebra
 
@@ -63,7 +63,7 @@ s.run
 g.run
 ```
 
-Typically, the *Helm* algebra would be a part of a `Coproduct` with other algebras in a larger program, so running the `Task` immediately after `helm.run` is not typical. 
+Typically, the *Helm* algebra would be a part of a `Coproduct` with other algebras in a larger program, so running the `Task` immediately after `helm.run` is not typical.
 
 ## Contributing
 
