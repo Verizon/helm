@@ -1,4 +1,3 @@
-import Dependencies._
 
 val http4sOrg = "org.http4s"
 val http4sVersion = "0.15.3"
@@ -8,11 +7,11 @@ scalaTestVersion  := "3.0.1"
 scalaCheckVersion := "1.13.4"
 
 libraryDependencies ++= Seq(
-  http4sOrg        %% "http4s-blaze-client"             % http4sVersion,
-  http4sOrg        %% "http4s-argonaut61"               % http4sVersion,
-  "com.whisk"      %% "docker-testkit-scalatest"        % dockeritVersion % "test",
-  "com.whisk"      %% "docker-testkit-impl-docker-java" % dockeritVersion % "test",
-  journal.core
+  "io.verizon.journal" %% "core"                            % "3.0.18",
+  http4sOrg            %% "http4s-blaze-client"             % http4sVersion,
+  http4sOrg            %% "http4s-argonaut61"               % http4sVersion,
+  "com.whisk"          %% "docker-testkit-scalatest"        % dockeritVersion % "test",
+  "com.whisk"          %% "docker-testkit-impl-docker-java" % dockeritVersion % "test"
 )
 
 (initialCommands in console) := """
