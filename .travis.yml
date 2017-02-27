@@ -33,7 +33,7 @@ script:
 after_success:
   - find $HOME/.sbt -name "*.lock" | xargs rm
   - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
-  - "bash <(curl -s https://codecov.oncue.verizon.net/bash) -u https://codecov.oncue.verizon.net -r $TRAVIS_REPO_SLUG -t $CODECOV_TOKEN"
+  - "bash <(curl -s https://codecov.io/bash) -r $TRAVIS_REPO_SLUG -t $CODECOV_TOKEN"
 
 cache:
   directories:
@@ -43,3 +43,5 @@ cache:
 env:
   global:
     - secure: "DZcuAGkuqTRPUXbk3lLS6uq3iGcMOdiqC95b/EkMnlyxvfQHvo7aDOXFtzv2GL1pWXBY969qy/YHnqUIMjP8eLBIO588mPUotlHztgVaG8hnf8YCfWjZmwGRz79/sZNlugBcIyYYTK7Whcgg5ssVWbJ/ubU09TF2dCiIMQhzq2U="
+    - secure: "GCV0F4pk1mv3u2hzRKdAZtoWuzWE9+Bb2g5KuYD+iiRroyEpwAiOzk174ARUU/BmqX87ZV7mnsXJfRxYqD8Z3dokxLAGQaSjEIwawuaDUACwh9BIIsfIFtravy/VuYv6PS7kv34lWo0bHXPDbU8w/A37/vIyu/Uh5pqfYtJhcg8="
+    - secure: "a8EwYFwjtxeYs/EQGLK0CnHN4jj1MTsXLdIR7LviohoB0fws1IvlTJHnPnbaVCcUB+ghoblt/tLLe8foSKWedfWkf9KBBbpLny1RW69eHp7qAUdgo6KoJZrjbKj7NYN2UrKgb/dUn7Gm+CmbNenwYoTmmdmkLDPDfgm3DACsOIE="
