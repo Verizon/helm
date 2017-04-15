@@ -1,6 +1,5 @@
 package helm
 
-import scala.collection.immutable.{Set => SSet}
 import argonaut._, Argonaut._
 import scalaz.\/
 import scalaz.concurrent.Task
@@ -46,7 +45,7 @@ class ConsulOpTests extends FlatSpec with Matchers with TypeCheckedTripleEquals 
         case ConsulOp.HealthCheck("foo") => now("""[{"Status":"passing"},{"Status":"warning"}]""")
       }
     } yield ()
-    interp.run(healthCheckJson[HealthStatus]("foo")).run should equal(\/.right(SSet(Passing,Warning)))
+    interp.run(healthCheckJson[HealthStatus]("foo")).run should equal(\/.right(List(Passing,Warning)))
   }
 
   it should "return a error if status id not decodeable" in {
@@ -66,6 +65,6 @@ class ConsulOpTests extends FlatSpec with Matchers with TypeCheckedTripleEquals 
         case ConsulOp.HealthCheck("foo") => now("""[]""")
       }
     } yield ()
-    interp.run(healthCheckJson[HealthStatus]("foo")).run should equal(\/.right(SSet()))
+    interp.run(healthCheckJson[HealthStatus]("foo")).run should equal(\/.right(List()))
   }
 }
