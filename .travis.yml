@@ -13,6 +13,8 @@ branches:
   only:
     - master
 
+dist: trusty
+
 services:
   - docker
 
