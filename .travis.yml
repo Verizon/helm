@@ -13,7 +13,7 @@ branches:
   only:
     - master
 
-sudo: required
+dist: trusty
 
 services:
   - docker

@@ -48,6 +48,6 @@ object ConsulOp {
   def healthCheck(service: String): ConsulOpF[String] =
     Free.liftFC(HealthCheck(service))
 
-  def healthCheckJson[A:DecodeJson](service: String): ConsulOpF[Err \/ SSet[A]] =
-    healthCheck(service).map(_.decodeEither[SSet[A]])
+  def healthCheckJson[A:DecodeJson](service: String): ConsulOpF[Err \/ List[A]] =
+    healthCheck(service).map(_.decodeEither[List[A]])
 }
