@@ -12,7 +12,7 @@ A native [Scala](http://scala-lang.org) client for interacting with [Consul](htt
 
 Add the following to your `build.sbt`:
 
-    libraryDependencies += "io.verizon.helm" %% "http4s" % "1.3.+"
+    libraryDependencies += "io.verizon.helm" %% "http4s" % "1.4.78-scalaz-7.1"
 
 The *Helm* binaries are located on maven central, so no additional resolvers are needed.
 
