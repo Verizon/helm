@@ -23,6 +23,7 @@ examples are `get` and `set`:
 
 ```
 import helm._
+import ConsulOp.ConsulOpF
 
 val s: ConsulOpF[Unit] = : ConsulOp.set("key", "value")
 
@@ -54,9 +55,9 @@ which actually interact with consul.
 ```
 import scalaz.concurrent.Task
 
-val s: Task[Unit] = helm.run(ConsulOp.set("testkey", "testvalue"))(interpreter)
+val s: Task[Unit] = helm.run(interpreter, ConsulOp.set("testkey", "testvalue"))
 
-val g: Task[String] = helm.run(ConsulOp.get("testkey"))(interpreter)
+val g: Task[Option[String]] = helm.run(interpreter, ConsulOp.get("testkey"))
 
 // actually execute the calls
 s.run
