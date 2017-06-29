@@ -2,7 +2,7 @@ package helm
 
 import scala.collection.immutable.{Set => SSet}
 import scala.language.existentials
-import scalaz.{\/, Coyoneda, EitherT, Free, Monad}
+import scalaz.{\/, Coyoneda, EitherT, Free, Monad, NonEmptyList}
 import scalaz.std.option._
 import scalaz.syntax.traverse._
 import argonaut.{DecodeJson, EncodeJson, StringWrap}, StringWrap.StringToParseWrap
@@ -20,6 +20,14 @@ object ConsulOp {
   final case class ListKeys(prefix: Key) extends ConsulOp[SSet[String]]
 
   final case class HealthCheck(service: String) extends ConsulOp[String]
+
+  final case class AgentRegisterService(
+    service: String,
+    id:      Option[String],
+    tags:    Option[NonEmptyList[String]],
+    address: Option[String],
+    port:    Option[Int]
+  ) extends ConsulOp[Unit]
 
   type ConsulOpF[A] = Free.FreeC[ConsulOp, A]
   type ConsulOpC[A] = Coyoneda[ConsulOp, A]
@@ -50,4 +58,13 @@ object ConsulOp {
 
   def healthCheckJson[A:DecodeJson](service: String): ConsulOpF[Err \/ List[A]] =
     healthCheck(service).map(_.decodeEither[List[A]])
+
+  def agentRegisterService(
+    service: String,
+    id:      Option[String],
+    tags:    Option[NonEmptyList[String]],
+    address: Option[String],
+    port:    Option[Int]
+  ): ConsulOpF[Unit] =
+    Free.liftFC(AgentRegisterService(service, id, tags, address, port))
 }

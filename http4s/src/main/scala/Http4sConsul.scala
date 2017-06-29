@@ -3,12 +3,16 @@ package http4s
 
 import journal.Logger
 
+import argonaut.Json
+import argonaut.Json.jEmptyObject
+import argonaut.StringWrap.StringToStringWrap
+
 import org.http4s._
 import org.http4s.client._
 import org.http4s.argonaut.jsonOf
 import org.http4s.headers.Authorization
 import org.http4s.Status.{Ok, NotFound}
-import scalaz.~>
+import scalaz.{~>, NonEmptyList}
 import scalaz.concurrent.Task
 import scalaz.stream.Process
 import scodec.bits.ByteVector
@@ -29,6 +33,7 @@ final class Http4sConsulClient(baseUri: Uri,
     case ConsulOp.ListKeys(prefix)     => list(prefix)
     case ConsulOp.Delete(key)          => delete(key)
     case ConsulOp.HealthCheck(service) => healthCheck(service)
+    case ConsulOp.AgentRegisterService(service, id, tags, address, port) => agentRegisterService(service, id, tags, address, port)
   }
 
   def addConsulToken(req: Request): Request =
@@ -90,5 +95,30 @@ final class Http4sConsulClient(baseUri: Uri,
       log.debug(s"health check response: " + response)
       response
     }
+  }
+
+  def agentRegisterService(
+    service: String,
+    id:      Option[String],
+    tags:    Option[NonEmptyList[String]],
+    address: Option[String],
+    port:    Option[Int]
+  ): Task[Unit] = {
+    val json: Json =
+      ("Name"    := service)           ->:
+      ("ID"      :=? id)               ->?:
+      ("Tags"    :=? tags.map(_.list)) ->?:
+      ("Address" :=? address)          ->?:
+      ("Port"    :=? port)             ->?:
+      jEmptyObject
+
+    for {
+      _ <- Task.delay(log.debug(s"registering $service with json: ${json.toString}"))
+      response <- client.expect[String](
+        addCreds(addConsulToken(
+          Request(Method.PUT,
+            uri = baseUri / "v1" / "agent" / "service" / "register",
+            body = Process.emit(ByteVector.view(json.toString.getBytes("UTF-8")))))))
+    } yield log.debug(s"registering service $service resulted in response $response")
   }
 }
