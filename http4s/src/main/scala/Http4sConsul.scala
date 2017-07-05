@@ -128,12 +128,10 @@ final class Http4sConsulClient(baseUri: Uri,
     } yield log.debug(s"registering service $service resulted in response $response")
   }
 
-  def agentDeregisterService(
-    service: String
-  ): Task[Unit] = {
-    val req = addCreds(addConsulToken(Request(Method.PUT, uri = (baseUri / "v1" / "agent" / "service" / "deregister" / service))))
+  def agentDeregisterService(id: String): Task[Unit] = {
+    val req = addCreds(addConsulToken(Request(Method.PUT, uri = (baseUri / "v1" / "agent" / "service" / "deregister" / id))))
     for {
-      _ <- Task.delay(log.debug(s"deregistering $service"))
+      _ <- Task.delay(log.debug(s"deregistering service with id $id"))
       response <- client.expect[String](req)
     } yield log.debug(s"response from deregister: " + response)
   }

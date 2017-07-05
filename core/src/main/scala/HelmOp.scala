@@ -77,10 +77,8 @@ object ConsulOp {
   ): ConsulOpF[Unit] =
     Free.liftFC(AgentRegisterService(service, id, tags, address, port))
 
-  def agentDeregisterService(
-    service: String
-  ): ConsulOpF[Unit] =
-    Free.liftFC(AgentDeregisterService(service))
+  def agentDeregisterService(id: String): ConsulOpF[Unit] =
+    Free.liftFC(AgentDeregisterService(id))
 
   def agentEnableMaintenanceMode(id: String, enable: Boolean, reason: Option[String]): ConsulOpF[Unit] =
     Free.liftFC(AgentEnableMaintenanceMode(id, enable, reason))
