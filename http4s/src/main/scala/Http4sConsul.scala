@@ -36,6 +36,7 @@ final class Http4sConsulClient(baseUri: Uri,
     case ConsulOp.HealthCheck(service) => healthCheck(service)
     case ConsulOp.AgentRegisterService(service, id, tags, address, port) =>
       agentRegisterService(service, id, tags, address, port)
+    case ConsulOp.AgentDeregisterService(service) => agentDeregisterService(service)
     case ConsulOp.AgentListServices => agentListServices()
   }
 
@@ -123,6 +124,16 @@ final class Http4sConsulClient(baseUri: Uri,
             uri = baseUri / "v1" / "agent" / "service" / "register",
             body = Process.emit(ByteVector.view(json.toString.getBytes("UTF-8")))))))
     } yield log.debug(s"registering service $service resulted in response $response")
+  }
+
+  def agentDeregisterService(
+    service: String
+  ): Task[Unit] = {
+    val req = addCreds(addConsulToken(Request(Method.PUT, uri = (baseUri / "v1" / "agent" / "service" / "deregister" / service))))
+    for {
+      _ <- Task.delay(log.debug(s"deregistering $service"))
+      response <- client.expect[String](req)
+    } yield log.debug(s"response from deregister: " + response)
   }
 
   def agentListServices(): Task[Map[String, ServiceResponse]] = {

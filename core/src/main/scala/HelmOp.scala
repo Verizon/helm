@@ -31,6 +31,8 @@ object ConsulOp {
     port:    Option[Int]
   ) extends ConsulOp[Unit]
 
+  final case class AgentDeregisterService(id: String) extends ConsulOp[Unit]
+
   type ConsulOpF[A] = Free.FreeC[ConsulOp, A]
   type ConsulOpC[A] = Coyoneda[ConsulOp, A]
 
@@ -72,4 +74,9 @@ object ConsulOp {
     port:    Option[Int]
   ): ConsulOpF[Unit] =
     Free.liftFC(AgentRegisterService(service, id, tags, address, port))
+
+  def agentDeregisterService(
+    service: String
+  ): ConsulOpF[Unit] =
+    Free.liftFC(AgentDeregisterService(service))
 }
