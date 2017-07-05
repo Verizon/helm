@@ -29,15 +29,17 @@ final class Http4sConsulClient(baseUri: Uri,
   private val log = Logger[this.type]
 
   def apply[A](op: ConsulOp[A]): Task[A] = op match {
-    case ConsulOp.Get(key)             => get(key)
-    case ConsulOp.Set(key, value)      => set(key, value)
-    case ConsulOp.ListKeys(prefix)     => list(prefix)
-    case ConsulOp.Delete(key)          => delete(key)
-    case ConsulOp.HealthCheck(service) => healthCheck(service)
+    case ConsulOp.Get(key)                        => get(key)
+    case ConsulOp.Set(key, value)                 => set(key, value)
+    case ConsulOp.ListKeys(prefix)                => list(prefix)
+    case ConsulOp.Delete(key)                     => delete(key)
+    case ConsulOp.HealthCheck(service)            => healthCheck(service)
     case ConsulOp.AgentRegisterService(service, id, tags, address, port) =>
       agentRegisterService(service, id, tags, address, port)
     case ConsulOp.AgentDeregisterService(service) => agentDeregisterService(service)
-    case ConsulOp.AgentListServices => agentListServices()
+    case ConsulOp.AgentListServices               => agentListServices()
+    case ConsulOp.AgentEnableMaintenanceMode(id, enable, reason) =>
+      agentEnableMaintenanceMode(id, enable, reason)
   }
 
   def addConsulToken(req: Request): Request =
@@ -145,6 +147,15 @@ final class Http4sConsulClient(baseUri: Uri,
       log.debug(s"got services: $services")
       services
     }
+  }
 
+  def agentEnableMaintenanceMode(id: String, enable: Boolean, reason: Option[String]): Task[Unit] = {
+    for {
+      _ <- Task.delay(log.debug(s"setting service with id $id maintenance mode to $enable"))
+      req = addCreds(addConsulToken(
+        Request(Method.PUT,
+          uri = (baseUri / "v1" / "agent" / "service" / "maintenance" / id).+?("enable", enable).+??("reason", reason))))
+      response  <- client.expect[String](req)
+    } yield log.debug(s"setting maintenance mode for service $id to $enable resulted in $response")
   }
 }

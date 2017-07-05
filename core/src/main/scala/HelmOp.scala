@@ -33,6 +33,8 @@ object ConsulOp {
 
   final case class AgentDeregisterService(id: String) extends ConsulOp[Unit]
 
+  final case class AgentEnableMaintenanceMode(id: String, enable: Boolean, reason: Option[String]) extends ConsulOp[Unit]
+
   type ConsulOpF[A] = Free.FreeC[ConsulOp, A]
   type ConsulOpC[A] = Coyoneda[ConsulOp, A]
 
@@ -79,4 +81,8 @@ object ConsulOp {
     service: String
   ): ConsulOpF[Unit] =
     Free.liftFC(AgentDeregisterService(service))
+
+  def agentEnableMaintenanceMode(id: String, enable: Boolean, reason: Option[String]): ConsulOpF[Unit] =
+    Free.liftFC(AgentEnableMaintenanceMode(id, enable, reason))
+
 }

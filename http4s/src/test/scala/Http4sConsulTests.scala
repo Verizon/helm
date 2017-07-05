@@ -76,6 +76,20 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
       \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 
+  "agentEnableMaintenanceMode" should "succeed when the response is 200" in {
+    val response = consulResponse(Status.Ok, "")
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.agentEnableMaintenanceMode("testService", true, None)).attemptRun should ===(
+      \/.right(()))
+  }
+
+  it should "fail when the response is 500" in {
+    val response = consulResponse(Status.InternalServerError, "")
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.agentEnableMaintenanceMode("testService", true, None)).attemptRun should ===(
+      \/.left(UnexpectedStatus(Status.InternalServerError)))
+  }
+
   "agentListServices" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, dummyServicesReply)
     val csl = constantConsul(response)
