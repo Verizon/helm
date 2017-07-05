@@ -24,6 +24,7 @@ final class Http4sConsulClient(baseUri: Uri,
                                credentials: Option[(String,String)] = None) extends (ConsulOp ~> Task) {
 
   private implicit val keysDecoder: EntityDecoder[List[String]] = jsonOf[List[String]]
+  private implicit val listServicesDecoder: EntityDecoder[Map[String, ServiceResponse]] = jsonOf[Map[String, ServiceResponse]]
 
   private val log = Logger[this.type]
 
@@ -33,7 +34,9 @@ final class Http4sConsulClient(baseUri: Uri,
     case ConsulOp.ListKeys(prefix)     => list(prefix)
     case ConsulOp.Delete(key)          => delete(key)
     case ConsulOp.HealthCheck(service) => healthCheck(service)
-    case ConsulOp.AgentRegisterService(service, id, tags, address, port) => agentRegisterService(service, id, tags, address, port)
+    case ConsulOp.AgentRegisterService(service, id, tags, address, port) =>
+      agentRegisterService(service, id, tags, address, port)
+    case ConsulOp.AgentListServices => agentListServices()
   }
 
   def addConsulToken(req: Request): Request =
@@ -105,7 +108,7 @@ final class Http4sConsulClient(baseUri: Uri,
     port:    Option[Int]
   ): Task[Unit] = {
     val json: Json =
-      ("Name"    := service)           ->:
+      ("Name"    :=  service)          ->:
       ("ID"      :=? id)               ->?:
       ("Tags"    :=? tags.map(_.list)) ->?:
       ("Address" :=? address)          ->?:
@@ -120,5 +123,17 @@ final class Http4sConsulClient(baseUri: Uri,
             uri = baseUri / "v1" / "agent" / "service" / "register",
             body = Process.emit(ByteVector.view(json.toString.getBytes("UTF-8")))))))
     } yield log.debug(s"registering service $service resulted in response $response")
+  }
+
+  def agentListServices(): Task[Map[String, ServiceResponse]] = {
+    for {
+      _ <- Task.delay(log.debug(s"listing services registered with local agent"))
+      req = addCreds(addConsulToken(Request(uri = (baseUri / "v1" / "agent" / "services"))))
+      services <- client.expect[Map[String, ServiceResponse]](req)
+    } yield {
+      log.debug(s"got services: $services")
+      services
+    }
+
   }
 }

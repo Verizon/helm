@@ -61,6 +61,25 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
     helm.run(csl, ConsulOp.agentRegisterService("testService", Some("testId"), None, None, None)).attemptRun should ===(
       \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
+
+  "agentListServices" should "succeed with the proper result when the response is 200" in {
+    val response = consulResponse(Status.Ok, dummyServicesReply)
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.agentListServices).attemptRun should ===(
+      \/.right(
+        Map(
+          "consul" -> ServiceResponse("consul", "consul", List.empty, "", 8300, false, 0),
+          "test"   -> ServiceResponse("testService", "test", List("testTag"), "127.0.0.1", 1234, false, 0)
+        )
+      ))
+  }
+
+  it should "fail when the response is 500" in {
+    val response = consulResponse(Status.InternalServerError, "boo")
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.agentListServices).attemptRun should ===(
+      \/.left(UnexpectedStatus(Status.InternalServerError)))
+  }
 }
 
 object Http4sConsulTests {
@@ -88,4 +107,31 @@ object Http4sConsulTests {
     Process.emit(ByteVector.encodeUtf8(s).right.get) // YOLO
 
   val dummyRequest: Request = Request()
+
+  val dummyServicesReply = """
+  {
+      "consul": {
+          "Address": "",
+          "CreateIndex": 0,
+          "EnableTagOverride": false,
+          "ID": "consul",
+          "ModifyIndex": 0,
+          "Port": 8300,
+          "Service": "consul",
+          "Tags": []
+      },
+      "test": {
+          "Address": "127.0.0.1",
+          "CreateIndex": 0,
+          "EnableTagOverride": false,
+          "ID": "test",
+          "ModifyIndex": 0,
+          "Port": 1234,
+          "Service": "testService",
+          "Tags": [
+              "testTag"
+          ]
+      }
+  }
+  """
 }
