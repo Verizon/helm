@@ -1,9 +1,8 @@
 package helm
 
-import scalaz._, Scalaz._
 import argonaut._, Argonaut._
 
-/** Case class representing the representation of a service as returned from an API call to Consul */
+/** Case class representing a service as returned from an API call to Consul */
 final case class ServiceResponse(
   service:           String,
   id:                String,

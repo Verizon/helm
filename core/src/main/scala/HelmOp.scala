@@ -24,11 +24,14 @@ object ConsulOp {
   final case object AgentListServices extends ConsulOp[Map[String, ServiceResponse]]
 
   final case class AgentRegisterService(
-    service: String,
-    id:      Option[String],
-    tags:    Option[NonEmptyList[String]],
-    address: Option[String],
-    port:    Option[Int]
+    service:           String,
+    id:                Option[String],
+    tags:              Option[NonEmptyList[String]],
+    address:           Option[String],
+    port:              Option[Int],
+    enableTagOverride: Option[Boolean],
+    check:             Option[HealthCheckParameter],
+    checks:            Option[NonEmptyList[HealthCheckParameter]]
   ) extends ConsulOp[Unit]
 
   final case class AgentDeregisterService(id: String) extends ConsulOp[Unit]
@@ -69,18 +72,22 @@ object ConsulOp {
     Free.liftFC(AgentListServices)
 
   def agentRegisterService(
-    service: String,
-    id:      Option[String],
-    tags:    Option[NonEmptyList[String]],
-    address: Option[String],
-    port:    Option[Int]
+    service:           String,
+    id:                Option[String],
+    tags:              Option[NonEmptyList[String]],
+    address:           Option[String],
+    port:              Option[Int],
+    enableTagOverride: Option[Boolean],
+    check:             Option[HealthCheckParameter],
+    checks:            Option[NonEmptyList[HealthCheckParameter]]
   ): ConsulOpF[Unit] =
-    Free.liftFC(AgentRegisterService(service, id, tags, address, port))
+    Free.liftFC(AgentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks))
 
   def agentDeregisterService(id: String): ConsulOpF[Unit] =
     Free.liftFC(AgentDeregisterService(id))
 
   def agentEnableMaintenanceMode(id: String, enable: Boolean, reason: Option[String]): ConsulOpF[Unit] =
     Free.liftFC(AgentEnableMaintenanceMode(id, enable, reason))
-
 }
+
+

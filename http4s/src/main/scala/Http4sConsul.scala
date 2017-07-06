@@ -34,8 +34,8 @@ final class Http4sConsulClient(baseUri: Uri,
     case ConsulOp.ListKeys(prefix)                => list(prefix)
     case ConsulOp.Delete(key)                     => delete(key)
     case ConsulOp.HealthCheck(service)            => healthCheck(service)
-    case ConsulOp.AgentRegisterService(service, id, tags, address, port) =>
-      agentRegisterService(service, id, tags, address, port)
+    case ConsulOp.AgentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks) =>
+      agentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks)
     case ConsulOp.AgentDeregisterService(service) => agentDeregisterService(service)
     case ConsulOp.AgentListServices               => agentListServices()
     case ConsulOp.AgentEnableMaintenanceMode(id, enable, reason) =>
@@ -104,18 +104,24 @@ final class Http4sConsulClient(baseUri: Uri,
   }
 
   def agentRegisterService(
-    service: String,
-    id:      Option[String],
-    tags:    Option[NonEmptyList[String]],
-    address: Option[String],
-    port:    Option[Int]
+    service:           String,
+    id:                Option[String],
+    tags:              Option[NonEmptyList[String]],
+    address:           Option[String],
+    port:              Option[Int],
+    enableTagOverride: Option[Boolean],
+    check:             Option[HealthCheckParameter],
+    checks:            Option[NonEmptyList[HealthCheckParameter]]
   ): Task[Unit] = {
     val json: Json =
-      ("Name"    :=  service)          ->:
-      ("ID"      :=? id)               ->?:
-      ("Tags"    :=? tags.map(_.list)) ->?:
-      ("Address" :=? address)          ->?:
-      ("Port"    :=? port)             ->?:
+      ("Name"              :=  service)           ->:
+      ("ID"                :=? id)                ->?:
+      ("Tags"              :=? tags.map(_.list))  ->?:
+      ("Address"           :=? address)           ->?:
+      ("Port"              :=? port)              ->?:
+      ("EnableTagOverride" :=? enableTagOverride) ->?:
+      ("Check"             :=? check)             ->?:
+      ("Checks"            :=? checks)            ->?:
       jEmptyObject
 
     for {

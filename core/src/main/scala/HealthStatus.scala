@@ -3,7 +3,6 @@ package helm
 import scalaz._, Scalaz._
 import argonaut._, Argonaut._
 
-
 sealed abstract class HealthStatus extends Product with Serializable
 
 object HealthStatus {
@@ -22,6 +21,14 @@ object HealthStatus {
       case _          => None
     }
 
+  def toString(hs: HealthStatus): String =
+    hs match {
+      case Passing  => "passing"
+      case Warning  => "warning"
+      case Critical => "critical"
+      case Unknown  => "unknown"
+    }
+
   implicit val HealthStatusDecoder: DecodeJson[HealthStatus] =
     DecodeJson[HealthStatus] { c =>
       (c --\ "Status").as[String].flatMap { s =>
@@ -31,4 +38,7 @@ object HealthStatus {
         )
       }
     }
+
+  implicit val HealthStatusEncoder: EncodeJson[HealthStatus] =
+    EncodeJson[HealthStatus] { hs => jString(toString(hs)) }
 }
