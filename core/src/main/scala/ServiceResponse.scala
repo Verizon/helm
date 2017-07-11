@@ -10,7 +10,8 @@ final case class ServiceResponse(
   address:           String,
   port:              Int,
   enableTagOverride: Boolean,
-  modifyIndex:       Int
+  createIndex:       Long,
+  modifyIndex:       Long
 )
 
 object ServiceResponse {
@@ -20,10 +21,11 @@ object ServiceResponse {
         id                <- (j --\ "ID").as[String]
         address           <- (j --\ "Address").as[String]
         enableTagOverride <- (j --\ "EnableTagOverride").as[Boolean]
-        modifyIndex       <- (j --\ "ModifyIndex").as[Int]
+        createIndex       <- (j --\ "CreateIndex").as[Long]
+        modifyIndex       <- (j --\ "ModifyIndex").as[Long]
         port              <- (j --\ "Port").as[Int]
         service           <- (j --\ "Service").as[String]
         tags              <- (j --\ "Tags").as[List[String]]
-      } yield ServiceResponse(service, id, tags, address, port, enableTagOverride, modifyIndex)
+      } yield ServiceResponse(service, id, tags, address, port, enableTagOverride, createIndex, modifyIndex)
     )
 }
