@@ -48,6 +48,47 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
       \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 
+  "listHealthChecksForService" should "succeed with the proper result when the response is 200" in {
+    val response = consulResponse(Status.Ok, dummyServiceHealthChecksReply)
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.listHealthChecksForService("test")).attemptRun should ===(
+      \/.right(
+        List(
+          HealthCheckResponse(
+            "localhost",
+            "service:testService",
+            "Service 'testService' check",
+            HealthStatus.Passing,
+            "test note",
+            "HTTP GET https://test.test.test/: 200 OK Output: all's well",
+            "testServiceID",
+            "testServiceName",
+            List("testTag"),
+            19008L,
+            19013L),
+          HealthCheckResponse(
+            "localhost",
+            "service:testService#2",
+            "other check",
+            HealthStatus.Critical,
+            "a note",
+            "Get https://test.test.test/: dial tcp 192.168.1.71:443: getsockopt: connection refused",
+            "testServiceID",
+            "testServiceName",
+            List("testTag", "anotherTag"),
+            123455121300L,
+            123455121321L)
+        )
+      ))
+  }
+
+  it should "fail when the response is 500" in {
+    val response = consulResponse(Status.InternalServerError, "boo")
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.agentListServices).attemptRun should ===(
+      \/.left(UnexpectedStatus(Status.InternalServerError)))
+  }
+
   "agentRegisterService" should "succeed when the response is 200" in {
     val response = consulResponse(Status.Ok, "yay")
     val csl = constantConsul(response)
@@ -96,8 +137,8 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
     helm.run(csl, ConsulOp.agentListServices).attemptRun should ===(
       \/.right(
         Map(
-          "consul" -> ServiceResponse("consul", "consul", List.empty, "", 8300, false, 0),
-          "test"   -> ServiceResponse("testService", "test", List("testTag"), "127.0.0.1", 1234, false, 0)
+          "consul" -> ServiceResponse("consul", "consul", List.empty, "", 8300, false, 1L, 2L),
+          "test"   -> ServiceResponse("testService", "test", List("testTag", "anotherTag"), "127.0.0.1", 1234, false, 123455121300L, 123455121321L)
         )
       ))
   }
@@ -140,26 +181,59 @@ object Http4sConsulTests {
   {
       "consul": {
           "Address": "",
-          "CreateIndex": 0,
+          "CreateIndex": 1,
           "EnableTagOverride": false,
           "ID": "consul",
-          "ModifyIndex": 0,
+          "ModifyIndex": 2,
           "Port": 8300,
           "Service": "consul",
           "Tags": []
       },
       "test": {
           "Address": "127.0.0.1",
-          "CreateIndex": 0,
+          "CreateIndex": 123455121300,
           "EnableTagOverride": false,
           "ID": "test",
-          "ModifyIndex": 0,
+          "ModifyIndex": 123455121321,
           "Port": 1234,
           "Service": "testService",
           "Tags": [
-              "testTag"
+              "testTag",
+              "anotherTag"
           ]
       }
   }
   """
+
+  val dummyServiceHealthChecksReply = """
+  [
+      {
+          "CheckID": "service:testService",
+          "CreateIndex": 19008,
+          "ModifyIndex": 19013,
+          "Name": "Service 'testService' check",
+          "Node": "localhost",
+          "Notes": "test note",
+          "Output": "HTTP GET https://test.test.test/: 200 OK Output: all's well",
+          "ServiceID": "testServiceID",
+          "ServiceName": "testServiceName",
+          "ServiceTags": ["testTag"],
+          "Status": "passing"
+      },
+      {
+          "CheckID": "service:testService#2",
+          "CreateIndex": 123455121300,
+          "ModifyIndex": 123455121321,
+          "Name": "other check",
+          "Node": "localhost",
+          "Notes": "a note",
+          "Output": "Get https://test.test.test/: dial tcp 192.168.1.71:443: getsockopt: connection refused",
+          "ServiceID": "testServiceID",
+          "ServiceName": "testServiceName",
+          "ServiceTags": ["testTag", "anotherTag"],
+          "Status": "critical"
+      }
+  ]
+  """
+
 }

@@ -37,34 +37,4 @@ class ConsulOpTests extends FlatSpec with Matchers with TypeCheckedTripleEquals 
     } yield ()
     interp.run(getJson[Json]("foo")).run should equal(\/.left("JSON terminates unexpectedly."))
   }
-
-  "healthCheck" should "return a vector of health status values when decodeable" in {
-    import HealthStatus._
-    val interp = for {
-      _ <- I.expectU[String] {
-        case ConsulOp.HealthCheck("foo") => now("""[{"Status":"passing"},{"Status":"warning"}]""")
-      }
-    } yield ()
-    interp.run(healthCheckJson[HealthStatus]("foo")).run should equal(\/.right(List(Passing,Warning)))
-  }
-
-  it should "return a error if status id not decodeable" in {
-    import HealthStatus._
-    val interp = for {
-      _ <- I.expectU[String] {
-        case ConsulOp.HealthCheck("foo") => now("""[{"Status":"bar"}]""")
-      }
-    } yield ()
-    interp.run(healthCheckJson[HealthStatus]("foo")).run.isLeft should equal(true)
-  }
-
-  it should "return a empty set if response is empty" in {
-    import HealthStatus._
-    val interp = for {
-      _ <- I.expectU[String] {
-        case ConsulOp.HealthCheck("foo") => now("""[]""")
-      }
-    } yield ()
-    interp.run(healthCheckJson[HealthStatus]("foo")).run should equal(\/.right(List()))
-  }
 }

@@ -25,6 +25,7 @@ final class Http4sConsulClient(baseUri: Uri,
 
   private implicit val keysDecoder: EntityDecoder[List[String]] = jsonOf[List[String]]
   private implicit val listServicesDecoder: EntityDecoder[Map[String, ServiceResponse]] = jsonOf[Map[String, ServiceResponse]]
+  private implicit val listHealthChecksDecoder: EntityDecoder[List[HealthCheckResponse]] = jsonOf[List[HealthCheckResponse]]
 
   private val log = Logger[this.type]
 
@@ -33,7 +34,7 @@ final class Http4sConsulClient(baseUri: Uri,
     case ConsulOp.Set(key, value)                 => set(key, value)
     case ConsulOp.ListKeys(prefix)                => list(prefix)
     case ConsulOp.Delete(key)                     => delete(key)
-    case ConsulOp.HealthCheck(service)            => healthCheck(service)
+    case ConsulOp.ListHealthChecksForService(service) => healthChecksForService(service)
     case ConsulOp.AgentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks) =>
       agentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks)
     case ConsulOp.AgentDeregisterService(service) => agentDeregisterService(service)
@@ -92,11 +93,11 @@ final class Http4sConsulClient(baseUri: Uri,
     } yield log.debug(s"response from delete: " + response)
   }
 
-  def healthCheck(service: String): Task[String] = {
+  def healthChecksForService(service: String): Task[List[HealthCheckResponse]] = {
     for {
-      _ <- Task.delay(log.debug(s"fetching health status for $service"))
+      _ <- Task.delay(log.debug(s"fetching health checks for $service"))
       req = addCreds(addConsulToken(Request(uri = (baseUri / "v1" / "health" / "checks" / service))))
-      response <- client.expect[String](req)
+      response <- client.expect[List[HealthCheckResponse]](req)
     } yield {
       log.debug(s"health check response: " + response)
       response

@@ -31,7 +31,7 @@ object HealthStatus {
 
   implicit val HealthStatusDecoder: DecodeJson[HealthStatus] =
     DecodeJson[HealthStatus] { c =>
-      (c --\ "Status").as[String].flatMap { s =>
+      c.as[String].flatMap { s =>
         fromString(s).cata(
           some = r => DecodeResult.ok(r),
           none = DecodeResult.fail(s"invalid health status: $s", c.history)
