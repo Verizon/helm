@@ -19,7 +19,17 @@ object ConsulOp {
 
   final case class ListKeys(prefix: Key) extends ConsulOp[SSet[String]]
 
-  final case class ListHealthChecksForService(service: String) extends ConsulOp[List[HealthCheckResponse]]
+  final case class ListHealthChecksForService(
+    service:    String,
+    datacenter: Option[String],
+    near:       Option[String],
+    nodeMeta:   Option[String]
+  ) extends ConsulOp[List[HealthCheckResponse]]
+
+  final case class ListHealthChecksForNode(
+    node:       String,
+    datacenter: Option[String]
+  ) extends ConsulOp[List[HealthCheckResponse]]
 
   final case object AgentListServices extends ConsulOp[Map[String, ServiceResponse]]
 
@@ -62,8 +72,19 @@ object ConsulOp {
   def listKeys(prefix: Key): ConsulOpF[SSet[String]] =
     Free.liftFC(ListKeys(prefix))
 
-  def listHealthChecksForService(service: String): ConsulOpF[List[HealthCheckResponse]] =
-    Free.liftFC(ListHealthChecksForService(service))
+  def listHealthChecksForService(
+    service:    String,
+    datacenter: Option[String],
+    near:       Option[String],
+    nodeMeta:   Option[String]
+  ): ConsulOpF[List[HealthCheckResponse]] =
+    Free.liftFC(ListHealthChecksForService(service, datacenter, near, nodeMeta))
+
+  def listHealthChecksForNode(
+    node:       String,
+    datacenter: Option[String]
+  ): ConsulOpF[List[HealthCheckResponse]] =
+    Free.liftFC(ListHealthChecksForNode(node, datacenter))
 
   def agentListServices(): ConsulOpF[Map[String, ServiceResponse]] =
     Free.liftFC(AgentListServices)
