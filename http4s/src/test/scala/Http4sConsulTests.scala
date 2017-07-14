@@ -52,34 +52,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
     val response = consulResponse(Status.Ok, dummyServiceHealthChecksReply)
     val csl = constantConsul(response)
     helm.run(csl, ConsulOp.listHealthChecksForNode("localhost", None)).attemptRun should ===(
-      \/.right(
-        List(
-          HealthCheckResponse(
-            "localhost",
-            "service:testService",
-            "Service 'testService' check",
-            HealthStatus.Passing,
-            "test note",
-            "HTTP GET https://test.test.test/: 200 OK Output: all's well",
-            "testServiceID",
-            "testServiceName",
-            List("testTag"),
-            19008L,
-            19013L),
-          HealthCheckResponse(
-            "localhost",
-            "service:testService#2",
-            "other check",
-            HealthStatus.Critical,
-            "a note",
-            "Get https://test.test.test/: dial tcp 192.168.1.71:443: getsockopt: connection refused",
-            "testServiceID",
-            "testServiceName",
-            List("testTag", "anotherTag"),
-            123455121300L,
-            123455121321L)
-        )
-      ))
+      \/.right(dummyHealthStatusResponse))
   }
 
   it should "fail when the response is 500" in {
@@ -89,38 +62,25 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
       \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 
+  "listHealthChecksInState" should "succeed with the proper result when the response is 200" in {
+    val response = consulResponse(Status.Ok, dummyServiceHealthChecksReply)
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.listHealthChecksInState(HealthStatus.Passing, None, None, None)).attemptRun should ===(
+      \/.right(dummyHealthStatusResponse))
+  }
+
+  it should "fail when the response is 500" in {
+    val response = consulResponse(Status.InternalServerError, "doesn't actually matter since this part is ignored")
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.listHealthChecksInState(HealthStatus.Passing, None, None, None)).attemptRun should ===(
+      \/.left(UnexpectedStatus(Status.InternalServerError)))
+  }
+
   "listHealthChecksForService" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, dummyServiceHealthChecksReply)
     val csl = constantConsul(response)
     helm.run(csl, ConsulOp.listHealthChecksForService("test", None, None, None)).attemptRun should ===(
-      \/.right(
-        List(
-          HealthCheckResponse(
-            "localhost",
-            "service:testService",
-            "Service 'testService' check",
-            HealthStatus.Passing,
-            "test note",
-            "HTTP GET https://test.test.test/: 200 OK Output: all's well",
-            "testServiceID",
-            "testServiceName",
-            List("testTag"),
-            19008L,
-            19013L),
-          HealthCheckResponse(
-            "localhost",
-            "service:testService#2",
-            "other check",
-            HealthStatus.Critical,
-            "a note",
-            "Get https://test.test.test/: dial tcp 192.168.1.71:443: getsockopt: connection refused",
-            "testServiceID",
-            "testServiceName",
-            List("testTag", "anotherTag"),
-            123455121300L,
-            123455121321L)
-        )
-      ))
+      \/.right(dummyHealthStatusResponse))
   }
 
   it should "fail when the response is 500" in {
@@ -276,5 +236,34 @@ object Http4sConsulTests {
       }
   ]
   """
+
+  val dummyHealthStatusResponse =
+    List(
+      HealthCheckResponse(
+        "localhost",
+        "service:testService",
+        "Service 'testService' check",
+        HealthStatus.Passing,
+        "test note",
+        "HTTP GET https://test.test.test/: 200 OK Output: all's well",
+        "testServiceID",
+        "testServiceName",
+        List("testTag"),
+        19008L,
+        19013L),
+      HealthCheckResponse(
+        "localhost",
+        "service:testService#2",
+        "other check",
+        HealthStatus.Critical,
+        "a note",
+        "Get https://test.test.test/: dial tcp 192.168.1.71:443: getsockopt: connection refused",
+        "testServiceID",
+        "testServiceName",
+        List("testTag", "anotherTag"),
+        123455121300L,
+        123455121321L)
+    )
+
 
 }

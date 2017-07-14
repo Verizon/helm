@@ -38,6 +38,8 @@ final class Http4sConsulClient(baseUri: Uri,
       healthChecksForService(service, datacenter, near, nodeMeta)
     case ConsulOp.ListHealthChecksForNode(node, datacenter) =>
       healthChecksForNode(node, datacenter)
+    case ConsulOp.ListHealthChecksInState(state, datacenter, near, nodeMeta) =>
+      healthChecksInState(state, datacenter, near, nodeMeta)
     case ConsulOp.AgentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks) =>
       agentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks)
     case ConsulOp.AgentDeregisterService(service) => agentDeregisterService(service)
@@ -123,6 +125,24 @@ final class Http4sConsulClient(baseUri: Uri,
       req = addCreds(addConsulToken(
         Request(
           uri = (baseUri / "v1" / "health" / "node" / node).+??("dc", datacenter))))
+      response <- client.expect[List[HealthCheckResponse]](req)
+    } yield {
+      log.debug(s"health check response: " + response)
+      response
+    }
+  }
+
+  def healthChecksInState(
+    state:      HealthStatus,
+    datacenter: Option[String],
+    near:       Option[String],
+    nodeMeta:   Option[String]
+  ): Task[List[HealthCheckResponse]] = {
+    for {
+      _ <- Task.delay(log.debug(s"fetching health checks for service ${HealthStatus.toString(state)}"))
+      req = addCreds(addConsulToken(
+        Request(
+          uri = (baseUri / "v1" / "health" / "state" / HealthStatus.toString(state)).+??("dc", datacenter).+??("near", near).+??("node-meta", nodeMeta))))
       response <- client.expect[List[HealthCheckResponse]](req)
     } yield {
       log.debug(s"health check response: " + response)

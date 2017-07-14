@@ -31,6 +31,13 @@ object ConsulOp {
     datacenter: Option[String]
   ) extends ConsulOp[List[HealthCheckResponse]]
 
+  final case class ListHealthChecksInState(
+    state:      HealthStatus,
+    datacenter: Option[String],
+    near:       Option[String],
+    nodeMeta:   Option[String]
+  ) extends ConsulOp[List[HealthCheckResponse]]
+
   final case object AgentListServices extends ConsulOp[Map[String, ServiceResponse]]
 
   final case class AgentRegisterService(
@@ -86,6 +93,14 @@ object ConsulOp {
   ): ConsulOpF[List[HealthCheckResponse]] =
     Free.liftFC(ListHealthChecksForNode(node, datacenter))
 
+  def listHealthChecksInState(
+    state:      HealthStatus,
+    datacenter: Option[String],
+    near:       Option[String],
+    nodeMeta:   Option[String]
+  ): ConsulOpF[List[HealthCheckResponse]] =
+    Free.liftFC(ListHealthChecksInState(state, datacenter, near, nodeMeta))
+
   def agentListServices(): ConsulOpF[Map[String, ServiceResponse]] =
     Free.liftFC(AgentListServices)
 
@@ -107,5 +122,3 @@ object ConsulOp {
   def agentEnableMaintenanceMode(id: String, enable: Boolean, reason: Option[String]): ConsulOpF[Unit] =
     Free.liftFC(AgentEnableMaintenanceMode(id, enable, reason))
 }
-
-
