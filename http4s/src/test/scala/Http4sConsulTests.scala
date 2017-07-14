@@ -58,7 +58,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "doesn't actually matter since this part is ignored")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.listHealthChecksForService("test", None, None, None)).attemptRun should ===(
+    helm.run(csl, ConsulOp.listHealthChecksForNode("localhost", None)).attemptRun should ===(
       \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 
