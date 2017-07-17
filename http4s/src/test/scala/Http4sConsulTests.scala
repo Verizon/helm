@@ -90,6 +90,20 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
       \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 
+  "healthListNodesForService" should "succeed with the proper result when the response is 200" in {
+    val response = consulResponse(Status.Ok, healthNodesForServiceJsonResponse)
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None)).attemptRun should ===(
+      \/.right(healthNodesForServiceReturnValue))
+  }
+
+  it should "fail when the response is 500" in {
+    val response = consulResponse(Status.InternalServerError, "aww yeah")
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None)).attemptRun should ===(
+      \/.left(UnexpectedStatus(Status.InternalServerError)))
+  }
+
   "agentRegisterService" should "succeed when the response is 200" in {
     val response = consulResponse(Status.Ok, "yay")
     val csl = constantConsul(response)
@@ -237,6 +251,123 @@ object Http4sConsulTests {
   ]
   """
 
+
+  val healthNodesForServiceJsonResponse = """
+  [
+      {
+          "Checks": [
+              {
+                  "CheckID": "service:testService",
+                  "CreateIndex": 19008,
+                  "ModifyIndex": 19013,
+                  "Name": "Service 'testService' check",
+                  "Node": "localhost",
+                  "Notes": "test note",
+                  "Output": "HTTP GET https://test.test.test/: 200 OK Output: all's well",
+                  "ServiceID": "testServiceID",
+                  "ServiceName": "testServiceName",
+                  "ServiceTags": ["testTag"],
+                  "Status": "passing"
+              },
+              {
+                  "CheckID": "service:testService#2",
+                  "CreateIndex": 123455121300,
+                  "ModifyIndex": 123455121321,
+                  "Name": "other check",
+                  "Node": "localhost",
+                  "Notes": "a note",
+                  "Output": "Get https://test.test.test/: dial tcp 192.168.1.71:443: getsockopt: connection refused",
+                  "ServiceID": "testServiceID",
+                  "ServiceName": "testServiceName",
+                  "ServiceTags": ["testTag", "anotherTag"],
+                  "Status": "critical"
+              }
+          ],
+          "Node": {
+              "Address": "192.168.1.145",
+              "CreateIndex": 123455121311,
+              "Datacenter": "dc1",
+              "ID": "cb1f6030-a220-4f92-57dc-7baaabdc3823",
+              "Meta": {
+                "metaTest": "test123"
+              },
+              "ModifyIndex": 123455121347,
+              "Node": "localhost",
+              "TaggedAddresses": {
+                  "lan": "192.168.1.145",
+                  "wan": "192.168.2.145"
+              }
+          },
+          "Service": {
+              "Address": "127.0.0.1",
+              "CreateIndex": 123455121301,
+              "EnableTagOverride": false,
+              "ID": "test",
+              "ModifyIndex": 123455121322,
+              "Port": 1234,
+              "Service": "testService",
+              "Tags": [
+                  "testTag",
+                  "anotherTag"
+              ]
+          }
+      }
+  ]
+  """
+
+  val healthNodesForServiceReturnValue =
+    List(
+      HealthNodesForServiceResponse(
+        NodeResponse(
+          "cb1f6030-a220-4f92-57dc-7baaabdc3823",
+          "localhost",
+          "192.168.1.145",
+          "dc1",
+          Map("metaTest" -> "test123"),
+          TaggedAddresses("192.168.1.145", "192.168.2.145"),
+          123455121311L,
+          123455121347L
+        ),
+        ServiceResponse(
+          "testService",
+          "test",
+          List("testTag",
+          "anotherTag"),
+          "127.0.0.1",
+          1234,
+          false,
+          123455121301L,
+          123455121322L
+        ),
+        List(
+          HealthCheckResponse(
+            "localhost",
+            "service:testService",
+            "Service 'testService' check",
+            HealthStatus.Passing,
+            "test note",
+            "HTTP GET https://test.test.test/: 200 OK Output: all's well",
+            "testServiceID",
+            "testServiceName",
+            List("testTag"),
+            19008L,
+            19013L),
+          HealthCheckResponse(
+            "localhost",
+            "service:testService#2",
+            "other check",
+            HealthStatus.Critical,
+            "a note",
+            "Get https://test.test.test/: dial tcp 192.168.1.71:443: getsockopt: connection refused",
+            "testServiceID",
+            "testServiceName",
+            List("testTag", "anotherTag"),
+            123455121300L,
+            123455121321L)
+        )
+      )
+    )
+
   val dummyHealthStatusResponse =
     List(
       HealthCheckResponse(
@@ -264,6 +395,4 @@ object Http4sConsulTests {
         123455121300L,
         123455121321L)
     )
-
-
 }

@@ -26,6 +26,8 @@ final class Http4sConsulClient(baseUri: Uri,
   private implicit val keysDecoder: EntityDecoder[List[String]] = jsonOf[List[String]]
   private implicit val listServicesDecoder: EntityDecoder[Map[String, ServiceResponse]] = jsonOf[Map[String, ServiceResponse]]
   private implicit val listHealthChecksDecoder: EntityDecoder[List[HealthCheckResponse]] = jsonOf[List[HealthCheckResponse]]
+  private implicit val listHealthNodesForServiceResponseDecoder: EntityDecoder[List[HealthNodesForServiceResponse]] =
+    jsonOf[List[HealthNodesForServiceResponse]]
 
   private val log = Logger[this.type]
 
@@ -40,6 +42,8 @@ final class Http4sConsulClient(baseUri: Uri,
       healthChecksForNode(node, datacenter)
     case ConsulOp.ListHealthChecksInState(state, datacenter, near, nodeMeta) =>
       healthChecksInState(state, datacenter, near, nodeMeta)
+    case ConsulOp.HealthListNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly) =>
+      healthNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly)
     case ConsulOp.AgentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks) =>
       agentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks)
     case ConsulOp.AgentDeregisterService(service) => agentDeregisterService(service)
@@ -144,6 +148,32 @@ final class Http4sConsulClient(baseUri: Uri,
         Request(
           uri = (baseUri / "v1" / "health" / "state" / HealthStatus.toString(state)).+??("dc", datacenter).+??("near", near).+??("node-meta", nodeMeta))))
       response <- client.expect[List[HealthCheckResponse]](req)
+    } yield {
+      log.debug(s"health check response: " + response)
+      response
+    }
+  }
+
+  def healthNodesForService(
+    service:     String,
+    datacenter:  Option[String],
+    near:        Option[String],
+    nodeMeta:    Option[String],
+    tag:         Option[String],
+    passingOnly: Option[Boolean]
+  ): Task[List[HealthNodesForServiceResponse]] = {
+    for {
+      _ <- Task.delay(log.debug(s"fetching nodes for service $service from health API"))
+      req = addCreds(addConsulToken(
+        Request(
+          uri =
+            (baseUri / "v1" / "health" / "service" / service)
+              .+??("dc", datacenter)
+              .+??("near", near)
+              .+??("node-meta", nodeMeta)
+              .+??("tag", tag)
+              .+??("passingOnly", passingOnly))))
+      response <- client.expect[List[HealthNodesForServiceResponse]](req)
     } yield {
       log.debug(s"health check response: " + response)
       response

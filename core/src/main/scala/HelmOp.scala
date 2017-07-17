@@ -38,6 +38,16 @@ object ConsulOp {
     nodeMeta:   Option[String]
   ) extends ConsulOp[List[HealthCheckResponse]]
 
+  // There's also a Catalog function called List Nodes for Service
+  final case class HealthListNodesForService(
+    service:     String,
+    datacenter:  Option[String],
+    near:        Option[String],
+    nodeMeta:    Option[String],
+    tag:         Option[String],
+    passingOnly: Option[Boolean]
+  ) extends ConsulOp[List[HealthNodesForServiceResponse]]
+
   final case object AgentListServices extends ConsulOp[Map[String, ServiceResponse]]
 
   final case class AgentRegisterService(
@@ -100,6 +110,16 @@ object ConsulOp {
     nodeMeta:   Option[String]
   ): ConsulOpF[List[HealthCheckResponse]] =
     Free.liftFC(ListHealthChecksInState(state, datacenter, near, nodeMeta))
+
+  def healthListNodesForService(
+    service:     String,
+    datacenter:  Option[String],
+    near:        Option[String],
+    nodeMeta:    Option[String],
+    tag:         Option[String],
+    passingOnly: Option[Boolean]
+  ): ConsulOpF[List[HealthNodesForServiceResponse]] =
+    Free.liftFC(HealthListNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly))
 
   def agentListServices(): ConsulOpF[Map[String, ServiceResponse]] =
     Free.liftFC(AgentListServices)
