@@ -32,15 +32,15 @@ final class Http4sConsulClient(baseUri: Uri,
   private val log = Logger[this.type]
 
   def apply[A](op: ConsulOp[A]): Task[A] = op match {
-    case ConsulOp.Get(key)                        => get(key)
-    case ConsulOp.Set(key, value)                 => set(key, value)
-    case ConsulOp.ListKeys(prefix)                => list(prefix)
-    case ConsulOp.Delete(key)                     => delete(key)
-    case ConsulOp.ListHealthChecksForService(service, datacenter, near, nodeMeta) =>
+    case ConsulOp.KVGet(key)         => kvGet(key)
+    case ConsulOp.KVSet(key, value)  => kvSet(key, value)
+    case ConsulOp.KVListKeys(prefix) => kvList(prefix)
+    case ConsulOp.KVDelete(key)      => kvDelete(key)
+    case ConsulOp.HealthListChecksForService(service, datacenter, near, nodeMeta) =>
       healthChecksForService(service, datacenter, near, nodeMeta)
-    case ConsulOp.ListHealthChecksForNode(node, datacenter) =>
+    case ConsulOp.HealthListChecksForNode(node, datacenter) =>
       healthChecksForNode(node, datacenter)
-    case ConsulOp.ListHealthChecksInState(state, datacenter, near, nodeMeta) =>
+    case ConsulOp.HealthListChecksInState(state, datacenter, near, nodeMeta) =>
       healthChecksInState(state, datacenter, near, nodeMeta)
     case ConsulOp.HealthListNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly) =>
       healthNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly)
@@ -58,7 +58,7 @@ final class Http4sConsulClient(baseUri: Uri,
   def addCreds(req: Request): Request =
     credentials.fold(req){case (un,pw) => req.putHeaders(Authorization(BasicCredentials(un,pw)))}
 
-  def get(key: Key): Task[Option[String]] = {
+  def kvGet(key: Key): Task[Option[String]] = {
     for {
       _ <- Task.delay(log.debug(s"fetching consul key $key"))
       req = addCreds(addConsulToken(Request(uri = (baseUri / "v1" / "kv" / key).+?("raw"))))
@@ -71,7 +71,7 @@ final class Http4sConsulClient(baseUri: Uri,
     }
   }
 
-  def set(key: Key, value: String): Task[Unit] =
+  def kvSet(key: Key, value: String): Task[Unit] =
     for {
       _ <- Task.delay(log.debug(s"setting consul key $key to $value"))
       response <- client.expect[String](
@@ -81,7 +81,7 @@ final class Http4sConsulClient(baseUri: Uri,
             body = Process.emit(ByteVector.view(value.getBytes("UTF-8")))))))
     } yield log.debug(s"setting consul key $key resulted in response $response")
 
-  def list(prefix: Key): Task[Set[Key]] = {
+  def kvList(prefix: Key): Task[Set[Key]] = {
     val req = addCreds(addConsulToken(Request(uri = (baseUri / "v1" / "kv" / prefix).withQueryParam(QueryParam.fromKey("keys")))))
 
     for {
@@ -93,7 +93,7 @@ final class Http4sConsulClient(baseUri: Uri,
     }
   }
 
-  def delete(key: Key): Task[Unit] = {
+  def kvDelete(key: Key): Task[Unit] = {
     val req = addCreds(addConsulToken(Request(Method.DELETE, uri = (baseUri / "v1" / "kv" / key))))
 
     for {

@@ -16,77 +16,77 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
   "get" should "succeed with some when the response is 200" in {
     val response = consulResponse(Status.Ok, "yay")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.get("foo")).attemptRun should ===(
+    helm.run(csl, ConsulOp.kvGet("foo")).attemptRun should ===(
       \/.right(Some("yay")))
   }
 
   "get" should "succeed with none when the response is 404" in {
     val response = consulResponse(Status.NotFound, "nope")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.get("foo")).attemptRun should ===(
+    helm.run(csl, ConsulOp.kvGet("foo")).attemptRun should ===(
       \/.right(None))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.get("foo")).attemptRun should ===(
+    helm.run(csl, ConsulOp.kvGet("foo")).attemptRun should ===(
       \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "set" should "succeed when the response is 200" in {
     val response = consulResponse(Status.Ok, "yay")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.set("foo", "bar")).attemptRun should ===(
+    helm.run(csl, ConsulOp.kvSet("foo", "bar")).attemptRun should ===(
       \/.right(()))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.set("foo", "bar")).attemptRun should ===(
+    helm.run(csl, ConsulOp.kvSet("foo", "bar")).attemptRun should ===(
       \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 
-  "listHealthChecksForNode" should "succeed with the proper result when the response is 200" in {
+  "healthListChecksForNode" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson)
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.listHealthChecksForNode("localhost", None)).attemptRun should ===(
+    helm.run(csl, ConsulOp.healthListChecksForNode("localhost", None)).attemptRun should ===(
       \/.right(healthStatusReplyJson))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "doesn't actually matter since this part is ignored")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.listHealthChecksForNode("localhost", None)).attemptRun should ===(
+    helm.run(csl, ConsulOp.healthListChecksForNode("localhost", None)).attemptRun should ===(
       \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 
-  "listHealthChecksInState" should "succeed with the proper result when the response is 200" in {
+  "healthListChecksInState" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson)
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.listHealthChecksInState(HealthStatus.Passing, None, None, None)).attemptRun should ===(
+    helm.run(csl, ConsulOp.healthListChecksInState(HealthStatus.Passing, None, None, None)).attemptRun should ===(
       \/.right(healthStatusReplyJson))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "doesn't actually matter since this part is ignored")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.listHealthChecksInState(HealthStatus.Passing, None, None, None)).attemptRun should ===(
+    helm.run(csl, ConsulOp.healthListChecksInState(HealthStatus.Passing, None, None, None)).attemptRun should ===(
       \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 
-  "listHealthChecksForService" should "succeed with the proper result when the response is 200" in {
+  "healthListChecksForService" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson)
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.listHealthChecksForService("test", None, None, None)).attemptRun should ===(
+    helm.run(csl, ConsulOp.healthListChecksForService("test", None, None, None)).attemptRun should ===(
       \/.right(healthStatusReplyJson))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "doesn't actually matter since this part is ignored")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.listHealthChecksForService("test", None, None, None)).attemptRun should ===(
+    helm.run(csl, ConsulOp.healthListChecksForService("test", None, None, None)).attemptRun should ===(
       \/.left(UnexpectedStatus(Status.InternalServerError)))
   }
 

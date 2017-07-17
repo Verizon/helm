@@ -70,12 +70,12 @@ class IntegrationSpec
 
   "consul" should "work" in check { (k: String, v: String) =>
     scala.concurrent.Await.result(dockerContainers.head.isReady(), 20.seconds)
-    helm.run(interpreter, ConsulOp.set(k, v)).run
-    helm.run(interpreter, ConsulOp.get(k)).run should be (Some(v))
+    helm.run(interpreter, ConsulOp.kvSet(k, v)).run
+    helm.run(interpreter, ConsulOp.kvGet(k)).run should be (Some(v))
 
-    helm.run(interpreter, ConsulOp.listKeys("")).run should contain (k)
-    helm.run(interpreter, ConsulOp.delete(k)).run
-    helm.run(interpreter, ConsulOp.listKeys("")).run should not contain (k)
+    helm.run(interpreter, ConsulOp.kvListKeys("")).run should contain (k)
+    helm.run(interpreter, ConsulOp.kvDelete(k)).run
+    helm.run(interpreter, ConsulOp.kvListKeys("")).run should not contain (k)
     true
   }(implicitly, implicitly, Arbitrary(Gen.alphaStr suchThat(_.size > 0)), implicitly, implicitly, Arbitrary(Gen.alphaStr), implicitly, implicitly, implicitly[CheckerAsserting[EntityDecoder[String]]], implicitly, implicitly)
 }

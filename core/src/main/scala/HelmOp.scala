@@ -11,27 +11,27 @@ sealed abstract class ConsulOp[A] extends Product with Serializable
 
 object ConsulOp {
 
-  final case class Get(key: Key) extends ConsulOp[Option[String]]
+  final case class KVGet(key: Key) extends ConsulOp[Option[String]]
 
-  final case class Set(key: Key, value: String) extends ConsulOp[Unit]
+  final case class KVSet(key: Key, value: String) extends ConsulOp[Unit]
 
-  final case class Delete(key: Key) extends ConsulOp[Unit]
+  final case class KVDelete(key: Key) extends ConsulOp[Unit]
 
-  final case class ListKeys(prefix: Key) extends ConsulOp[SSet[String]]
+  final case class KVListKeys(prefix: Key) extends ConsulOp[SSet[String]]
 
-  final case class ListHealthChecksForService(
+  final case class HealthListChecksForService(
     service:    String,
     datacenter: Option[String],
     near:       Option[String],
     nodeMeta:   Option[String]
   ) extends ConsulOp[List[HealthCheckResponse]]
 
-  final case class ListHealthChecksForNode(
+  final case class HealthListChecksForNode(
     node:       String,
     datacenter: Option[String]
   ) extends ConsulOp[List[HealthCheckResponse]]
 
-  final case class ListHealthChecksInState(
+  final case class HealthListChecksInState(
     state:      HealthStatus,
     datacenter: Option[String],
     near:       Option[String],
@@ -71,45 +71,45 @@ object ConsulOp {
   // this shouldn't be necessary, but we need to help the compiler out a bit
   implicit val ConsulOpFMonad: Monad[ConsulOpF] = Free.freeMonad[ConsulOpC]
 
-  def get(key: Key): ConsulOpF[Option[String]] =
-    Free.liftFC(Get(key))
+  def kvGet(key: Key): ConsulOpF[Option[String]] =
+    Free.liftFC(KVGet(key))
 
-  def getJson[A:DecodeJson](key: Key): ConsulOpF[Err \/ Option[A]] =
-    get(key).map(_.traverseU(_.decodeEither[A]))
+  def kvGetJson[A:DecodeJson](key: Key): ConsulOpF[Err \/ Option[A]] =
+    kvGet(key).map(_.traverseU(_.decodeEither[A]))
 
-  def set(key: Key, value: String): ConsulOpF[Unit] =
-    Free.liftFC(Set(key, value))
+  def kvSet(key: Key, value: String): ConsulOpF[Unit] =
+    Free.liftFC(KVSet(key, value))
 
-  def setJson[A](key: Key, value: A)(implicit A: EncodeJson[A]): ConsulOpF[Unit] =
-    set(key, A.encode(value).toString)
+  def kvSetJson[A](key: Key, value: A)(implicit A: EncodeJson[A]): ConsulOpF[Unit] =
+    kvSet(key, A.encode(value).toString)
 
-  def delete(key: Key): ConsulOpF[Unit] =
-    Free.liftFC(Delete(key))
+  def kvDelete(key: Key): ConsulOpF[Unit] =
+    Free.liftFC(KVDelete(key))
 
-  def listKeys(prefix: Key): ConsulOpF[SSet[String]] =
-    Free.liftFC(ListKeys(prefix))
+  def kvListKeys(prefix: Key): ConsulOpF[SSet[String]] =
+    Free.liftFC(KVListKeys(prefix))
 
-  def listHealthChecksForService(
+  def healthListChecksForService(
     service:    String,
     datacenter: Option[String],
     near:       Option[String],
     nodeMeta:   Option[String]
   ): ConsulOpF[List[HealthCheckResponse]] =
-    Free.liftFC(ListHealthChecksForService(service, datacenter, near, nodeMeta))
+    Free.liftFC(HealthListChecksForService(service, datacenter, near, nodeMeta))
 
-  def listHealthChecksForNode(
+  def healthListChecksForNode(
     node:       String,
     datacenter: Option[String]
   ): ConsulOpF[List[HealthCheckResponse]] =
-    Free.liftFC(ListHealthChecksForNode(node, datacenter))
+    Free.liftFC(HealthListChecksForNode(node, datacenter))
 
-  def listHealthChecksInState(
+  def healthListChecksInState(
     state:      HealthStatus,
     datacenter: Option[String],
     near:       Option[String],
     nodeMeta:   Option[String]
   ): ConsulOpF[List[HealthCheckResponse]] =
-    Free.liftFC(ListHealthChecksInState(state, datacenter, near, nodeMeta))
+    Free.liftFC(HealthListChecksInState(state, datacenter, near, nodeMeta))
 
   def healthListNodesForService(
     service:     String,
