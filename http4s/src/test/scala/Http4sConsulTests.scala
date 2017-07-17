@@ -49,10 +49,10 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
   }
 
   "listHealthChecksForNode" should "succeed with the proper result when the response is 200" in {
-    val response = consulResponse(Status.Ok, dummyServiceHealthChecksReply)
+    val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson)
     val csl = constantConsul(response)
     helm.run(csl, ConsulOp.listHealthChecksForNode("localhost", None)).attemptRun should ===(
-      \/.right(dummyHealthStatusResponse))
+      \/.right(healthStatusReplyJson))
   }
 
   it should "fail when the response is 500" in {
@@ -63,10 +63,10 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
   }
 
   "listHealthChecksInState" should "succeed with the proper result when the response is 200" in {
-    val response = consulResponse(Status.Ok, dummyServiceHealthChecksReply)
+    val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson)
     val csl = constantConsul(response)
     helm.run(csl, ConsulOp.listHealthChecksInState(HealthStatus.Passing, None, None, None)).attemptRun should ===(
-      \/.right(dummyHealthStatusResponse))
+      \/.right(healthStatusReplyJson))
   }
 
   it should "fail when the response is 500" in {
@@ -77,10 +77,10 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
   }
 
   "listHealthChecksForService" should "succeed with the proper result when the response is 200" in {
-    val response = consulResponse(Status.Ok, dummyServiceHealthChecksReply)
+    val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson)
     val csl = constantConsul(response)
     helm.run(csl, ConsulOp.listHealthChecksForService("test", None, None, None)).attemptRun should ===(
-      \/.right(dummyHealthStatusResponse))
+      \/.right(healthStatusReplyJson))
   }
 
   it should "fail when the response is 500" in {
@@ -91,7 +91,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
   }
 
   "healthListNodesForService" should "succeed with the proper result when the response is 200" in {
-    val response = consulResponse(Status.Ok, healthNodesForServiceJsonResponse)
+    val response = consulResponse(Status.Ok, healthNodesForServiceReplyJson)
     val csl = constantConsul(response)
     helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None)).attemptRun should ===(
       \/.right(healthNodesForServiceReturnValue))
@@ -220,7 +220,7 @@ object Http4sConsulTests {
   }
   """
 
-  val dummyServiceHealthChecksReply = """
+  val serviceHealthChecksReplyJson = """
   [
       {
           "CheckID": "service:testService",
@@ -252,7 +252,7 @@ object Http4sConsulTests {
   """
 
 
-  val healthNodesForServiceJsonResponse = """
+  val healthNodesForServiceReplyJson = """
   [
       {
           "Checks": [
@@ -368,7 +368,7 @@ object Http4sConsulTests {
       )
     )
 
-  val dummyHealthStatusResponse =
+  val healthStatusReplyJson =
     List(
       HealthCheckResponse(
         "localhost",
