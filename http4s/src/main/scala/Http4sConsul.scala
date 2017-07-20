@@ -172,7 +172,7 @@ final class Http4sConsulClient(baseUri: Uri,
               .+??("near", near)
               .+??("node-meta", nodeMeta)
               .+??("tag", tag)
-              .+??("passingOnly", passingOnly))))
+              .+??("passing", passingOnly.filter(identity))))) // all values of passing parameter are treated the same by Consul
       response <- client.expect[List[HealthNodesForServiceResponse]](req)
     } yield {
       log.debug(s"health check response: " + response)
