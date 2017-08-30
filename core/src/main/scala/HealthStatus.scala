@@ -1,6 +1,5 @@
 package helm
 
-import scalaz._, Scalaz._
 import argonaut._, Argonaut._
 
 sealed abstract class HealthStatus extends Product with Serializable
@@ -32,10 +31,10 @@ object HealthStatus {
   implicit val HealthStatusDecoder: DecodeJson[HealthStatus] =
     DecodeJson[HealthStatus] { c =>
       c.as[String].flatMap { s =>
-        fromString(s).cata(
-          some = r => DecodeResult.ok(r),
-          none = DecodeResult.fail(s"invalid health status: $s", c.history)
-        )
+        fromString(s) match {
+          case Some(r) => DecodeResult.ok(r)
+          case None => DecodeResult.fail(s"invalid health status: $s", c.history)
+        }
       }
     }
 

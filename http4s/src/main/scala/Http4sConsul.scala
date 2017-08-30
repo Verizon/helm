@@ -3,25 +3,28 @@ package http4s
 
 import journal.Logger
 
+import argonaut.ArgonautCats._
 import argonaut.Json
 import argonaut.Json.jEmptyObject
 import argonaut.StringWrap.StringToStringWrap
 
 import org.http4s._
 import org.http4s.client._
-import org.http4s.argonaut.jsonOf
+import org.http4s.argonaut._
 import org.http4s.headers.Authorization
+import org.http4s.Method.PUT
 import org.http4s.Status.{Ok, NotFound}
-import scalaz.{~>, NonEmptyList}
-import scalaz.concurrent.Task
-import scalaz.stream.Process
+import cats.~>
+import cats.data.NonEmptyList
+import fs2.Task
 import scodec.bits.ByteVector
 import scala.collection.immutable.{Set => SSet}
 
-final class Http4sConsulClient(baseUri: Uri,
-                               client: Client,
-                               accessToken: Option[String] = None,
-                               credentials: Option[(String,String)] = None) extends (ConsulOp ~> Task) {
+final class Http4sConsulClient(
+  baseUri: Uri,
+  client: Client,
+  accessToken: Option[String] = None,
+  credentials: Option[(String,String)] = None) extends (ConsulOp ~> Task) {
 
   private implicit val keysDecoder: EntityDecoder[List[String]] = jsonOf[List[String]]
   private implicit val listServicesDecoder: EntityDecoder[Map[String, ServiceResponse]] = jsonOf[Map[String, ServiceResponse]]
@@ -74,11 +77,8 @@ final class Http4sConsulClient(baseUri: Uri,
   def kvSet(key: Key, value: String): Task[Unit] =
     for {
       _ <- Task.delay(log.debug(s"setting consul key $key to $value"))
-      response <- client.expect[String](
-        addCreds(addConsulToken(
-          Request(Method.PUT,
-            uri = baseUri / "v1" / "kv" / key,
-            body = Process.emit(ByteVector.view(value.getBytes("UTF-8")))))))
+      req <- PUT(uri = baseUri / "v1" / "kv" / key, value).map(addConsulToken).map(addCreds)
+      response <- client.expect[String](req)
     } yield log.debug(s"setting consul key $key resulted in response $response")
 
   def kvList(prefix: Key): Task[Set[Key]] = {
@@ -191,23 +191,20 @@ final class Http4sConsulClient(baseUri: Uri,
     checks:            Option[NonEmptyList[HealthCheckParameter]]
   ): Task[Unit] = {
     val json: Json =
-      ("Name"              :=  service)           ->:
-      ("ID"                :=? id)                ->?:
-      ("Tags"              :=? tags.map(_.list))  ->?:
-      ("Address"           :=? address)           ->?:
-      ("Port"              :=? port)              ->?:
-      ("EnableTagOverride" :=? enableTagOverride) ->?:
-      ("Check"             :=? check)             ->?:
-      ("Checks"            :=? checks)            ->?:
+      ("Name"              :=  service)            ->:
+      ("ID"                :=? id)                 ->?:
+      ("Tags"              :=? tags.map(_.toList)) ->?:
+      ("Address"           :=? address)            ->?:
+      ("Port"              :=? port)               ->?:
+      ("EnableTagOverride" :=? enableTagOverride)  ->?:
+      ("Check"             :=? check)              ->?:
+      ("Checks"            :=? checks)             ->?:
       jEmptyObject
 
     for {
       _ <- Task.delay(log.debug(s"registering $service with json: ${json.toString}"))
-      response <- client.expect[String](
-        addCreds(addConsulToken(
-          Request(Method.PUT,
-            uri = baseUri / "v1" / "agent" / "service" / "register",
-            body = Process.emit(ByteVector.view(json.toString.getBytes("UTF-8")))))))
+      req <- PUT(baseUri / "v1" / "agent" / "service" / "register", json).map(addConsulToken).map(addCreds)
+      response <- client.expect[String](req)
     } yield log.debug(s"registering service $service resulted in response $response")
   }
 

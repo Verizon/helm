@@ -3,11 +3,13 @@ package http4s
 
 import scala.concurrent.duration.DurationInt
 
+import cats.implicits._
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.netty.NettyDockerCmdExecFactory
 import com.whisk.docker._
 import com.whisk.docker.impl.dockerjava.{Docker, DockerJavaExecutorFactory}
 import com.whisk.docker.scalatest._
+import fs2.interop.cats._
 import journal.Logger
 import org.http4s._
 import org.http4s.client._
@@ -70,12 +72,12 @@ class IntegrationSpec
 
   "consul" should "work" in check { (k: String, v: String) =>
     scala.concurrent.Await.result(dockerContainers.head.isReady(), 20.seconds)
-    helm.run(interpreter, ConsulOp.kvSet(k, v)).run
-    helm.run(interpreter, ConsulOp.kvGet(k)).run should be (Some(v))
+    helm.run(interpreter, ConsulOp.kvSet(k, v)).unsafeRun
+    helm.run(interpreter, ConsulOp.kvGet(k)).unsafeRun should be (Some(v))
 
-    helm.run(interpreter, ConsulOp.kvListKeys("")).run should contain (k)
-    helm.run(interpreter, ConsulOp.kvDelete(k)).run
-    helm.run(interpreter, ConsulOp.kvListKeys("")).run should not contain (k)
+    helm.run(interpreter, ConsulOp.kvListKeys("")).unsafeRun should contain (k)
+    helm.run(interpreter, ConsulOp.kvDelete(k)).unsafeRun
+    helm.run(interpreter, ConsulOp.kvListKeys("")).unsafeRun should not contain (k)
     true
   }(implicitly, implicitly, Arbitrary(Gen.alphaStr suchThat(_.size > 0)), implicitly, implicitly, Arbitrary(Gen.alphaStr), implicitly, implicitly, implicitly[CheckerAsserting[EntityDecoder[String]]], implicitly, implicitly)
 }
