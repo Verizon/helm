@@ -1,6 +1,4 @@
-import argonaut._, Argonaut._
 import cats.{~>,Monad}
-import cats.free.Free
 
 package object helm {
   type Err = String // YOLO

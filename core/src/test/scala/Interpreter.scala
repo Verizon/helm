@@ -1,6 +1,6 @@
 package helm
 
-import cats.{~>, Monad, MonadError}
+import cats.{~>, MonadError}
 import cats.free.{Coyoneda, Free}
 import cats.implicits._
 

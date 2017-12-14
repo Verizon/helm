@@ -1,9 +1,7 @@
 package helm
 
 import scala.collection.immutable.{Set => SSet}
-import scala.language.existentials
 import argonaut.{DecodeJson, EncodeJson, StringWrap}, StringWrap.StringToParseWrap
-import cats.Monad
 import cats.data.NonEmptyList
 import cats.free.Free
 import cats.free.Free.liftF

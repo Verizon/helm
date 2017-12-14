@@ -2,7 +2,6 @@ package helm
 
 import argonaut._, Argonaut._
 import cats.effect.IO
-import cats.implicits._
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalactic.TypeCheckedTripleEquals
 import ConsulOp._
