@@ -62,7 +62,7 @@ class IntegrationSpec
     with BeforeAndAfterAll
     with DockerConsulService with DockerTestKit {
 
-  val client = PooledHttp1Client[IO]()
+  val client = Http1Client[IO]().unsafeRunSync
 
   val baseUrl: Uri =
     Uri.fromString(s"http://${dockerHost}:${ConsulPort}").valueOr(throw _)
