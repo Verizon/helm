@@ -1,7 +1,7 @@
 
 libraryDependencies ++= Seq(
-  "io.argonaut"                %% "argonaut"          % "6.2",
-  "org.typelevel"              %% "cats-free"         % "1.0.0-RC2",
+  "io.argonaut"                %% "argonaut"          % "6.2.1",
+  "org.typelevel"              %% "cats-free"         % "1.0.1",
   "org.typelevel"              %% "cats-effect"       % "0.5"
 )
 
