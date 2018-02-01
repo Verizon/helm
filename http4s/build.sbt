@@ -1,6 +1,6 @@
 
 val http4sOrg = "org.http4s"
-val http4sVersion = "0.18.0-M8"
+val http4sVersion = "0.18.0"
 val dockeritVersion = "0.9.0"
 
 scalaTestVersion  := "3.0.1"
