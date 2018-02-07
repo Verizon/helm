@@ -3,6 +3,8 @@ package http4s
 
 import scala.concurrent.duration.DurationInt
 
+import cats.effect.IO
+import cats.implicits._
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.netty.NettyDockerCmdExecFactory
 import com.whisk.docker._
@@ -10,7 +12,6 @@ import com.whisk.docker.impl.dockerjava.{Docker, DockerJavaExecutorFactory}
 import com.whisk.docker.scalatest._
 import journal.Logger
 import org.http4s._
-import org.http4s.client._
 import org.http4s.client.blaze._
 import org.scalacheck._
 import org.scalatest._
@@ -61,7 +62,7 @@ class IntegrationSpec
     with BeforeAndAfterAll
     with DockerConsulService with DockerTestKit {
 
-  val client = PooledHttp1Client()
+  val client = Http1Client[IO]().unsafeRunSync
 
   val baseUrl: Uri =
     Uri.fromString(s"http://${dockerHost}:${ConsulPort}").valueOr(throw _)
@@ -70,12 +71,12 @@ class IntegrationSpec
 
   "consul" should "work" in check { (k: String, v: String) =>
     scala.concurrent.Await.result(dockerContainers.head.isReady(), 20.seconds)
-    helm.run(interpreter, ConsulOp.kvSet(k, v)).run
-    helm.run(interpreter, ConsulOp.kvGet(k)).run should be (Some(v))
+    helm.run(interpreter, ConsulOp.kvSet(k, v)).unsafeRunSync
+    helm.run(interpreter, ConsulOp.kvGet(k)).unsafeRunSync should be (Some(v))
 
-    helm.run(interpreter, ConsulOp.kvListKeys("")).run should contain (k)
-    helm.run(interpreter, ConsulOp.kvDelete(k)).run
-    helm.run(interpreter, ConsulOp.kvListKeys("")).run should not contain (k)
+    helm.run(interpreter, ConsulOp.kvListKeys("")).unsafeRunSync should contain (k)
+    helm.run(interpreter, ConsulOp.kvDelete(k)).unsafeRunSync
+    helm.run(interpreter, ConsulOp.kvListKeys("")).unsafeRunSync should not contain (k)
     true
-  }(implicitly, implicitly, Arbitrary(Gen.alphaStr suchThat(_.size > 0)), implicitly, implicitly, Arbitrary(Gen.alphaStr), implicitly, implicitly, implicitly[CheckerAsserting[EntityDecoder[String]]], implicitly, implicitly)
+  }(implicitly, implicitly, Arbitrary(Gen.alphaStr suchThat(_.size > 0)), implicitly, implicitly, Arbitrary(Gen.alphaStr), implicitly, implicitly, implicitly[CheckerAsserting[EntityDecoder[IO, String]]], implicitly, implicitly)
 }

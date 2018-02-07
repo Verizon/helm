@@ -1,30 +1,9 @@
 package helm
 
-import scalaz.{-\/, \/-, Catchable, Forall, Free, Monad}, Free.FreeC
-import scalaz.syntax.monad._
+import cats.{~>, MonadError}
+import cats.free.{Coyoneda, Free}
+import cats.implicits._
 
-/**
- * TODO redefine this as Free over the following functor:
- *
-type S[F[_], M[_], A] = String \/ (Forall[({ type λ[α] = PartialFunction[F[α], (A, M[α])] })#λ], A)
-
-def functor[F[_], M[_]]: Functor[S[F, M, ?]] = new Functor[S[F, M, ?]] {
-
-  def map[A, B](fa: S[F, M, A])(f: A => B): S[F, M, B] = fa match {
-    case -\/(str) => -\/(str)
-
-    case \/-((pf, fail)) =>
-      val pf2 = new Forall[({ type λ[α] = PartialFunction[F[α], (B, M[α])] })#λ] {
-        def apply[C]: PartialFunction[F[C], (B, M[C])] =
-          pf.apply[C] andThen { case (a, mc) => (f(a), mc) }
-      }
-
-      val fail2 = f(fail)
-
-      \/-((pf2, fail2))
-  }
-}
- */
 sealed trait Interpreter[F[_], M[_], +S] {
   import Interpreter._
 
@@ -69,9 +48,8 @@ sealed trait Interpreter[F[_], M[_], +S] {
   // eff1 -> eff2 -> (eff3 -> eff5, eff4) -> eff6
   // expect(eff1) -> expect(eff2) -> (expect(eff3) -> expect(eff5), expect(eff4), expect(eff7)) -> expect(eff6)
 
-  def run[A](fc: FreeC[F, A])(
-      implicit M: Monad[M],
-      C: Catchable[M],
+  def run[A](free: Free[F, A])(implicit 
+      C: MonadError[M, Throwable],
       T: TestFramework): M[A] = {
 
     // we need to cache these here to save off the call stack
@@ -86,8 +64,8 @@ sealed trait Interpreter[F[_], M[_], +S] {
         lastSuspension: Option[Any]): M[A] = it match {
       case Expect(patternF, fail) =>
         fc.resume match {
-          case -\/(cy) =>
-            val pattern = patternF.apply[cy.I]
+          case Left(cy) =>
+            val pattern = patternF.apply[cy.Pivot]
 
             if (pattern isDefinedAt cy.fi) {
               val (it2, ma) = pattern(cy.fi)
@@ -97,14 +75,14 @@ sealed trait Interpreter[F[_], M[_], +S] {
               loop(fail, fc, lastSuspension) // restart with the failure continuation
             }
 
-          case \/-(_) =>
+          case Right(_) =>
             val t2 = lastSuspension map { a =>
               T.withMessage(
                 earlyTermination,
                 s"unexpected early termination; last valid suspension: $a")
             } getOrElse earlyTermination
 
-            C.fail(t2)
+            C.raiseError(t2)
         }
 
       case Bind(ma, extend) =>
@@ -112,24 +90,26 @@ sealed trait Interpreter[F[_], M[_], +S] {
 
       case Return(_) =>
         fc.resume match {
-          case -\/(cy) =>
+          case Left(cy) =>
             val t2 = T.withMessage(
               suspensionTermination,
               s"unexpected suspension: ${cy.fi}")
 
-            C.fail(t2)
+            C.raiseError(t2)
 
-          case \/-(r) => M.point(r)
+          case Right(r) => C.pure(r)
         }
 
-      case Fail(t) => C.fail(t)
+      case Fail(t) => C.raiseError(t)
     }
 
+    val fc = free.compile(λ[F ~> Coyoneda[F, ?]](Coyoneda.lift(_)))
     loop(this, fc, None)
   }
 }
 
 object Interpreter {
+  private type FreeC[F[_], B] = Free[({type λ[α] = Coyoneda[F, α]})#λ, B]
 
   trait Functions[F[_], M[_]] {
     def point[S](s: S) = Interpreter.point[F, M, S](s)
@@ -215,4 +195,9 @@ object Interpreter {
       extends Interpreter[F, M, S]
   final case class Fail[F[_], M[_], S](t: Throwable)
       extends Interpreter[F, M, S] // TODO be less insane than String
+
+  trait Forall[F[_]] {
+    def apply[A]: F[A]
+  }
 }
+

@@ -1,11 +1,11 @@
 package helm
 
 import scala.collection.immutable.{Set => SSet}
-import scala.language.existentials
-import scalaz.{\/, Coyoneda, EitherT, Free, Monad, NonEmptyList}
-import scalaz.std.option._
-import scalaz.syntax.traverse._
 import argonaut.{DecodeJson, EncodeJson, StringWrap}, StringWrap.StringToParseWrap
+import cats.data.NonEmptyList
+import cats.free.Free
+import cats.free.Free.liftF
+import cats.implicits._
 
 sealed abstract class ConsulOp[A] extends Product with Serializable
 
@@ -65,29 +65,25 @@ object ConsulOp {
 
   final case class AgentEnableMaintenanceMode(id: String, enable: Boolean, reason: Option[String]) extends ConsulOp[Unit]
 
-  type ConsulOpF[A] = Free.FreeC[ConsulOp, A]
-  type ConsulOpC[A] = Coyoneda[ConsulOp, A]
-
-  // this shouldn't be necessary, but we need to help the compiler out a bit
-  implicit val ConsulOpFMonad: Monad[ConsulOpF] = Free.freeMonad[ConsulOpC]
+  type ConsulOpF[A] = Free[ConsulOp, A]
 
   def kvGet(key: Key): ConsulOpF[Option[String]] =
-    Free.liftFC(KVGet(key))
+    liftF(KVGet(key))
 
-  def kvGetJson[A:DecodeJson](key: Key): ConsulOpF[Err \/ Option[A]] =
-    kvGet(key).map(_.traverseU(_.decodeEither[A]))
+  def kvGetJson[A:DecodeJson](key: Key): ConsulOpF[Either[Err, Option[A]]] =
+    kvGet(key).map(_.traverse(_.decodeEither[A]))
 
   def kvSet(key: Key, value: String): ConsulOpF[Unit] =
-    Free.liftFC(KVSet(key, value))
+    liftF(KVSet(key, value))
 
   def kvSetJson[A](key: Key, value: A)(implicit A: EncodeJson[A]): ConsulOpF[Unit] =
     kvSet(key, A.encode(value).toString)
 
   def kvDelete(key: Key): ConsulOpF[Unit] =
-    Free.liftFC(KVDelete(key))
+    liftF(KVDelete(key))
 
   def kvListKeys(prefix: Key): ConsulOpF[SSet[String]] =
-    Free.liftFC(KVListKeys(prefix))
+    liftF(KVListKeys(prefix))
 
   def healthListChecksForService(
     service:    String,
@@ -95,13 +91,13 @@ object ConsulOp {
     near:       Option[String],
     nodeMeta:   Option[String]
   ): ConsulOpF[List[HealthCheckResponse]] =
-    Free.liftFC(HealthListChecksForService(service, datacenter, near, nodeMeta))
+    liftF(HealthListChecksForService(service, datacenter, near, nodeMeta))
 
   def healthListChecksForNode(
     node:       String,
     datacenter: Option[String]
   ): ConsulOpF[List[HealthCheckResponse]] =
-    Free.liftFC(HealthListChecksForNode(node, datacenter))
+    liftF(HealthListChecksForNode(node, datacenter))
 
   def healthListChecksInState(
     state:      HealthStatus,
@@ -109,7 +105,7 @@ object ConsulOp {
     near:       Option[String],
     nodeMeta:   Option[String]
   ): ConsulOpF[List[HealthCheckResponse]] =
-    Free.liftFC(HealthListChecksInState(state, datacenter, near, nodeMeta))
+    liftF(HealthListChecksInState(state, datacenter, near, nodeMeta))
 
   def healthListNodesForService(
     service:     String,
@@ -119,10 +115,10 @@ object ConsulOp {
     tag:         Option[String],
     passingOnly: Option[Boolean]
   ): ConsulOpF[List[HealthNodesForServiceResponse]] =
-    Free.liftFC(HealthListNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly))
+    liftF(HealthListNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly))
 
   def agentListServices(): ConsulOpF[Map[String, ServiceResponse]] =
-    Free.liftFC(AgentListServices)
+    liftF(AgentListServices)
 
   def agentRegisterService(
     service:           String,
@@ -134,11 +130,11 @@ object ConsulOp {
     check:             Option[HealthCheckParameter],
     checks:            Option[NonEmptyList[HealthCheckParameter]]
   ): ConsulOpF[Unit] =
-    Free.liftFC(AgentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks))
+    liftF(AgentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks))
 
   def agentDeregisterService(id: String): ConsulOpF[Unit] =
-    Free.liftFC(AgentDeregisterService(id))
+    liftF(AgentDeregisterService(id))
 
   def agentEnableMaintenanceMode(id: String, enable: Boolean, reason: Option[String]): ConsulOpF[Unit] =
-    Free.liftFC(AgentEnableMaintenanceMode(id, enable, reason))
+    liftF(AgentEnableMaintenanceMode(id, enable, reason))
 }

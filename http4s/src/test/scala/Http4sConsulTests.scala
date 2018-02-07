@@ -1,13 +1,13 @@
 package helm
 package http4s
 
-import scalaz.{\/, ~>, Kleisli}
-import scalaz.concurrent.Task
-import scalaz.stream.Process
-import scodec.bits.ByteVector
+import cats.~>
+import cats.data.Kleisli
+import cats.effect.IO
+import fs2.{Chunk, Stream}
 import org.http4s.{EntityBody, Request, Response, Status, Uri}
 import org.http4s.client._
-import org.scalatest._, Matchers._
+import org.scalatest._
 import org.scalactic.TypeCheckedTripleEquals
 
 class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEquals {
@@ -16,141 +16,141 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
   "get" should "succeed with some when the response is 200" in {
     val response = consulResponse(Status.Ok, "yay")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.kvGet("foo")).attemptRun should ===(
-      \/.right(Some("yay")))
+    helm.run(csl, ConsulOp.kvGet("foo")).attempt.unsafeRunSync should ===(
+      Right(Some("yay")))
   }
 
   "get" should "succeed with none when the response is 404" in {
     val response = consulResponse(Status.NotFound, "nope")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.kvGet("foo")).attemptRun should ===(
-      \/.right(None))
+    helm.run(csl, ConsulOp.kvGet("foo")).attempt.unsafeRunSync should ===(
+      Right(None))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.kvGet("foo")).attemptRun should ===(
-      \/.left(UnexpectedStatus(Status.InternalServerError)))
+    helm.run(csl, ConsulOp.kvGet("foo")).attempt.unsafeRunSync should ===(
+      Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "set" should "succeed when the response is 200" in {
     val response = consulResponse(Status.Ok, "yay")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.kvSet("foo", "bar")).attemptRun should ===(
-      \/.right(()))
+    helm.run(csl, ConsulOp.kvSet("foo", "bar")).attempt.unsafeRunSync should ===(
+      Right(()))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.kvSet("foo", "bar")).attemptRun should ===(
-      \/.left(UnexpectedStatus(Status.InternalServerError)))
+    helm.run(csl, ConsulOp.kvSet("foo", "bar")).attempt.unsafeRunSync should ===(
+      Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "healthListChecksForNode" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson)
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListChecksForNode("localhost", None)).attemptRun should ===(
-      \/.right(healthStatusReplyJson))
+    helm.run(csl, ConsulOp.healthListChecksForNode("localhost", None)).attempt.unsafeRunSync should ===(
+      Right(healthStatusReplyJson))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "doesn't actually matter since this part is ignored")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListChecksForNode("localhost", None)).attemptRun should ===(
-      \/.left(UnexpectedStatus(Status.InternalServerError)))
+    helm.run(csl, ConsulOp.healthListChecksForNode("localhost", None)).attempt.unsafeRunSync should ===(
+      Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "healthListChecksInState" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson)
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListChecksInState(HealthStatus.Passing, None, None, None)).attemptRun should ===(
-      \/.right(healthStatusReplyJson))
+    helm.run(csl, ConsulOp.healthListChecksInState(HealthStatus.Passing, None, None, None)).attempt.unsafeRunSync should ===(
+      Right(healthStatusReplyJson))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "doesn't actually matter since this part is ignored")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListChecksInState(HealthStatus.Passing, None, None, None)).attemptRun should ===(
-      \/.left(UnexpectedStatus(Status.InternalServerError)))
+    helm.run(csl, ConsulOp.healthListChecksInState(HealthStatus.Passing, None, None, None)).attempt.unsafeRunSync should ===(
+      Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "healthListChecksForService" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson)
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListChecksForService("test", None, None, None)).attemptRun should ===(
-      \/.right(healthStatusReplyJson))
+    helm.run(csl, ConsulOp.healthListChecksForService("test", None, None, None)).attempt.unsafeRunSync should ===(
+      Right(healthStatusReplyJson))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "doesn't actually matter since this part is ignored")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListChecksForService("test", None, None, None)).attemptRun should ===(
-      \/.left(UnexpectedStatus(Status.InternalServerError)))
+    helm.run(csl, ConsulOp.healthListChecksForService("test", None, None, None)).attempt.unsafeRunSync should ===(
+      Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "healthListNodesForService" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, healthNodesForServiceReplyJson)
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None)).attemptRun should ===(
-      \/.right(healthNodesForServiceReturnValue))
+    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None)).attempt.unsafeRunSync should ===(
+      Right(healthNodesForServiceReturnValue))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "aww yeah")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None)).attemptRun should ===(
-      \/.left(UnexpectedStatus(Status.InternalServerError)))
+    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None)).attempt.unsafeRunSync should ===(
+      Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "agentRegisterService" should "succeed when the response is 200" in {
     val response = consulResponse(Status.Ok, "yay")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.agentRegisterService("testService", Some("testId"), None, None, None, None, None, None)).attemptRun should ===(
-      \/.right(()))
+    helm.run(csl, ConsulOp.agentRegisterService("testService", Some("testId"), None, None, None, None, None, None)).attempt.unsafeRunSync should ===(
+      Right(()))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.agentRegisterService("testService", Some("testId"), None, None, None, None, None, None)).attemptRun should ===(
-      \/.left(UnexpectedStatus(Status.InternalServerError)))
+    helm.run(csl, ConsulOp.agentRegisterService("testService", Some("testId"), None, None, None, None, None, None)).attempt.unsafeRunSync should ===(
+      Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "agentDeregisterService" should "succeed when the response is 200" in {
     val response = consulResponse(Status.Ok, "")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.agentDeregisterService("testService")).attemptRun should ===(
-      \/.right(()))
+    helm.run(csl, ConsulOp.agentDeregisterService("testService")).attempt.unsafeRunSync should ===(
+      Right(()))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.agentDeregisterService("testService")).attemptRun should ===(
-      \/.left(UnexpectedStatus(Status.InternalServerError)))
+    helm.run(csl, ConsulOp.agentDeregisterService("testService")).attempt.unsafeRunSync should ===(
+      Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "agentEnableMaintenanceMode" should "succeed when the response is 200" in {
     val response = consulResponse(Status.Ok, "")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.agentEnableMaintenanceMode("testService", true, None)).attemptRun should ===(
-      \/.right(()))
+    helm.run(csl, ConsulOp.agentEnableMaintenanceMode("testService", true, None)).attempt.unsafeRunSync should ===(
+      Right(()))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.agentEnableMaintenanceMode("testService", true, None)).attemptRun should ===(
-      \/.left(UnexpectedStatus(Status.InternalServerError)))
+    helm.run(csl, ConsulOp.agentEnableMaintenanceMode("testService", true, None)).attempt.unsafeRunSync should ===(
+      Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "agentListServices" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, dummyServicesReply)
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.agentListServices).attemptRun should ===(
-      \/.right(
+    helm.run(csl, ConsulOp.agentListServices).attempt.unsafeRunSync should ===(
+      Right(
         Map(
           "consul" -> ServiceResponse("consul", "consul", List.empty, "", 8300, false, 1L, 2L),
           "test"   -> ServiceResponse("testService", "test", List("testTag", "anotherTag"), "127.0.0.1", 1234, false, 123455121300L, 123455121321L)
@@ -161,36 +161,33 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.agentListServices).attemptRun should ===(
-      \/.left(UnexpectedStatus(Status.InternalServerError)))
+    helm.run(csl, ConsulOp.agentListServices).attempt.unsafeRunSync should ===(
+      Left(UnexpectedStatus(Status.InternalServerError)))
   }
 }
 
 object Http4sConsulTests {
-  private val base64Encoder = java.util.Base64.getEncoder
-
-  def constantConsul(response: Response): ConsulOp ~> Task = {
+  def constantConsul(response: Response[IO]): ConsulOp ~> IO = {
     new Http4sConsulClient(
       Uri.uri("http://localhost:8500/v1/kv/v1"),
       constantResponseClient(response),
       None)
   }
 
-  def consulResponse(status: Status, s: String): Response = {
-    val base64 = new String(base64Encoder.encode(s.getBytes("utf-8")), "utf-8")
+  def consulResponse(status: Status, s: String): Response[IO] = {
     val responseBody = body(s)
     Response(status = status, body = responseBody)
   }
 
-  def constantResponseClient(response: Response): Client = {
-    val dispResponse = DisposableResponse(response, Task.now(()))
-    Client(Kleisli{req => Task.now(dispResponse)}, Task.now(()))
+  def constantResponseClient(response: Response[IO]): Client[IO] = {
+    val dispResponse = DisposableResponse(response, IO.unit)
+    Client(Kleisli{req => IO.pure(dispResponse)}, IO.unit)
   }
 
-  def body(s: String): EntityBody =
-    Process.emit(ByteVector.encodeUtf8(s).right.get) // YOLO
+  def body(s: String): EntityBody[IO] =
+    Stream.chunk(Chunk.bytes(s.getBytes("UTF-8"))) // YOLO
 
-  val dummyRequest: Request = Request()
+  val dummyRequest: Request[IO] = Request[IO]()
 
   val dummyServicesReply = """
   {

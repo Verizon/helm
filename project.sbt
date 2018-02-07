@@ -1,7 +1,7 @@
 
 organization in Global := "io.verizon.helm"
 
-crossScalaVersions in Global := Seq("2.11.8", "2.10.6")
+crossScalaVersions in Global := Seq("2.12.4", "2.11.12")
 
 scalaVersion in Global := crossScalaVersions.value.head
 
