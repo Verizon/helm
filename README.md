@@ -25,9 +25,9 @@ examples are `get` and `set`:
 import helm._
 import ConsulOp.ConsulOpF
 
-val s: ConsulOpF[Unit] = : ConsulOp.set("key", "value")
+val s: ConsulOpF[Unit] = : ConsulOp.kvSet("key", "value")
 
-val g: ConsulOpF[Option[String]] = : ConsulOp.get("key")
+val g: ConsulOpF[Option[String]] = : ConsulOp.kvGet("key")
 ```
 
 These are however just descriptions of what operations the program might perform in the future, just creating these operations does not
@@ -39,32 +39,33 @@ First we create an interpreter, which requires an http4s client and
 a base url for consul:
 
 ```
+import cats.effect.IO
 import helm.http4s._
 import org.http4s.Uri.uri
 import org.http4s.client.blaze.PooledHttp1Client
 
-val client = PooledHttp1Client()
+val client = PooledHttp1Client[IO]()
 val baseUrl = uri("http://127.0.0.1:8500")
 
 val interpreter = new Http4sConsulClient(baseUrl, client)
 ```
 
-Now we can apply commands to our http4s client to get back Tasks
+Now we can apply commands to our http4s client to get back IOs
 which actually interact with consul.
 
 ```
-import scalaz.concurrent.Task
+import cats.effect.IO
 
-val s: Task[Unit] = helm.run(interpreter, ConsulOp.set("testkey", "testvalue"))
+val s: IO[Unit] = helm.run(interpreter, ConsulOp.kvSet("testkey", "testvalue"))
 
-val g: Task[Option[String]] = helm.run(interpreter, ConsulOp.get("testkey"))
+val g: IO[Option[String]] = helm.run(interpreter, ConsulOp.kvGet("testkey"))
 
 // actually execute the calls
-s.run
-g.run
+s.unsafeRunSync
+g.unsafeRunSync
 ```
 
-Typically, the *Helm* algebra would be a part of a `Coproduct` with other algebras in a larger program, so running the `Task` immediately after `helm.run` is not typical.
+Typically, the *Helm* algebra would be a part of a `Coproduct` with other algebras in a larger program, so running the `IO` immediately after `helm.run` is not typical.
 
 ## Contributing
 
