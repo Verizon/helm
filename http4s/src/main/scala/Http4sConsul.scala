@@ -4,7 +4,7 @@ package http4s
 import argonaut.Json
 import argonaut.Json.jEmptyObject
 import argonaut.StringWrap.StringToStringWrap
-import cats.data.NonEmptyList
+import cats.data.{EitherT, NonEmptyList}
 import cats.effect.Effect
 import cats.~>
 import cats.implicits._
@@ -16,6 +16,8 @@ import org.http4s.argonaut._
 import org.http4s.client._
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.headers.Authorization
+import org.http4s.Status.Successful
+import org.http4s.syntax.string.http4sStringSyntax
 
 final class Http4sConsulClient[F[_]](
   baseUri: Uri,
@@ -40,14 +42,14 @@ final class Http4sConsulClient[F[_]](
     case ConsulOp.KVSet(key, value)  => kvSet(key, value)
     case ConsulOp.KVListKeys(prefix) => kvList(prefix)
     case ConsulOp.KVDelete(key)      => kvDelete(key)
-    case ConsulOp.HealthListChecksForService(service, datacenter, near, nodeMeta) =>
-      healthChecksForService(service, datacenter, near, nodeMeta)
-    case ConsulOp.HealthListChecksForNode(node, datacenter) =>
-      healthChecksForNode(node, datacenter)
-    case ConsulOp.HealthListChecksInState(state, datacenter, near, nodeMeta) =>
-      healthChecksInState(state, datacenter, near, nodeMeta)
-    case ConsulOp.HealthListNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly) =>
-      healthNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly)
+    case ConsulOp.HealthListChecksForService(service, datacenter, near, nodeMeta, index) =>
+      healthChecksForService(service, datacenter, near, nodeMeta, index)
+    case ConsulOp.HealthListChecksForNode(node, datacenter, index) =>
+      healthChecksForNode(node, datacenter, index)
+    case ConsulOp.HealthListChecksInState(state, datacenter, near, nodeMeta, index) =>
+      healthChecksInState(state, datacenter, near, nodeMeta, index)
+    case ConsulOp.HealthListNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly, index) =>
+      healthNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly, index)
     case ConsulOp.AgentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks) =>
       agentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks)
     case ConsulOp.AgentDeregisterService(service) => agentDeregisterService(service)
@@ -89,7 +91,7 @@ final class Http4sConsulClient[F[_]](
       _ <- F.delay(log.debug(s"listing key consul with the prefix: $prefix"))
       response <- client.expect[List[String]](req)
     } yield {
-      log.debug(s"listing of keys: " + response)
+      log.debug(s"listing of keys: $response")
       response.toSet
     }
   }
@@ -100,21 +102,27 @@ final class Http4sConsulClient[F[_]](
     for {
       _ <- F.delay(log.debug(s"deleting $key from the consul KV store"))
       response <- client.expect[String](req)
-    } yield log.debug(s"response from delete: " + response)
+    } yield log.debug(s"response from delete: $response")
   }
 
   def healthChecksForService(
     service:    String,
     datacenter: Option[String],
     near:       Option[String],
-    nodeMeta:   Option[String]
-  ): F[List[HealthCheckResponse]] = {
+    nodeMeta:   Option[String],
+    index:      Option[Long]
+  ): F[QueryResponse[List[HealthCheckResponse]]] = {
     for {
       _ <- F.delay(log.debug(s"fetching health checks for service $service"))
       req = addCreds(addConsulToken(
         Request(
-          uri = (baseUri / "v1" / "health" / "checks" / service).+??("dc", datacenter).+??("near", near).+??("node-meta", nodeMeta))))
-      response <- client.expect[List[HealthCheckResponse]](req)
+          uri =
+            (baseUri / "v1" / "health" / "checks" / service)
+              .+??("dc", datacenter)
+              .+??("near", near)
+              .+??("node-meta", nodeMeta)
+              .+??("index", index))))
+      response <- client.fetch[QueryResponse[List[HealthCheckResponse]]](req)(extractQueryResponse)
     } yield {
       log.debug(s"health check response: " + response)
       response
@@ -123,16 +131,20 @@ final class Http4sConsulClient[F[_]](
 
   def healthChecksForNode(
     node:       String,
-    datacenter: Option[String]
-  ): F[List[HealthCheckResponse]] = {
+    datacenter: Option[String],
+    index:      Option[Long]
+  ): F[QueryResponse[List[HealthCheckResponse]]] = {
     for {
       _ <- F.delay(log.debug(s"fetching health checks for node $node"))
       req = addCreds(addConsulToken(
         Request(
-          uri = (baseUri / "v1" / "health" / "node" / node).+??("dc", datacenter))))
-      response <- client.expect[List[HealthCheckResponse]](req)
+          uri =
+            (baseUri / "v1" / "health" / "node" / node)
+              .+??("dc", datacenter)
+              .+??("index", index))))
+      response <- client.fetch[QueryResponse[List[HealthCheckResponse]]](req)(extractQueryResponse)
     } yield {
-      log.debug(s"health check response: " + response)
+      log.debug(s"health checks for node response: $response")
       response
     }
   }
@@ -141,16 +153,22 @@ final class Http4sConsulClient[F[_]](
     state:      HealthStatus,
     datacenter: Option[String],
     near:       Option[String],
-    nodeMeta:   Option[String]
-  ): F[List[HealthCheckResponse]] = {
+    nodeMeta:   Option[String],
+    index:      Option[Long]
+  ): F[QueryResponse[List[HealthCheckResponse]]] = {
     for {
       _ <- F.delay(log.debug(s"fetching health checks for service ${HealthStatus.toString(state)}"))
       req = addCreds(addConsulToken(
         Request(
-          uri = (baseUri / "v1" / "health" / "state" / HealthStatus.toString(state)).+??("dc", datacenter).+??("near", near).+??("node-meta", nodeMeta))))
-      response <- client.expect[List[HealthCheckResponse]](req)
+          uri =
+            (baseUri / "v1" / "health" / "state" / HealthStatus.toString(state))
+              .+??("dc", datacenter)
+              .+??("near", near)
+              .+??("node-meta", nodeMeta)
+              .+??("index", index))))
+      response <- client.fetch[QueryResponse[List[HealthCheckResponse]]](req)(extractQueryResponse)
     } yield {
-      log.debug(s"health check response: " + response)
+      log.debug(s"health checks in state response: $response")
       response
     }
   }
@@ -161,8 +179,9 @@ final class Http4sConsulClient[F[_]](
     near:        Option[String],
     nodeMeta:    Option[String],
     tag:         Option[String],
-    passingOnly: Option[Boolean]
-  ): F[List[HealthNodesForServiceResponse]] = {
+    passingOnly: Option[Boolean],
+    index:       Option[Long]
+  ): F[QueryResponse[List[HealthNodesForServiceResponse]]] = {
     for {
       _ <- F.delay(log.debug(s"fetching nodes for service $service from health API"))
       req = addCreds(addConsulToken(
@@ -173,10 +192,12 @@ final class Http4sConsulClient[F[_]](
               .+??("near", near)
               .+??("node-meta", nodeMeta)
               .+??("tag", tag)
-              .+??("passing", passingOnly.filter(identity))))) // all values of passing parameter are treated the same by Consul
-      response <- client.expect[List[HealthNodesForServiceResponse]](req)
+              .+??("passing", passingOnly.filter(identity)) // all values of passing parameter are treated the same by Consul
+              .+??("index", index))))
+
+      response <- client.fetch[QueryResponse[List[HealthNodesForServiceResponse]]](req)(extractQueryResponse)
     } yield {
-      log.debug(s"health check response: " + response)
+      log.debug(s"health nodes for service response: $response")
       response
     }
   }
@@ -236,5 +257,24 @@ final class Http4sConsulClient[F[_]](
           uri = (baseUri / "v1" / "agent" / "service" / "maintenance" / id).+?("enable", enable).+??("reason", reason))))
       response  <- client.expect[String](req)
     } yield log.debug(s"setting maintenance mode for service $id to $enable resulted in $response")
+  }
+
+  /**
+    * Encapsulates the functionality for parsing out the Consul headers from the HTTP response and decoding the JSON body.
+    * Note: these headers are only present for read endpoints, and only a subset of those.
+    */
+  private def extractQueryResponse[A](response: Response[F])(implicit d: EntityDecoder[F, A]): F[QueryResponse[A]] = response match {
+    case Successful(r) =>
+      val headers = r.headers
+      (for {
+        index         <- EitherT.fromOption[F](headers.get("X-Consul-Index".ci), "Header not present in response: X-Consul-Index").map(_.value.toLong)
+        knownLeader   <- EitherT.fromOption[F](headers.get("X-Consul-KnownLeader".ci), "Header not present in response: X-Consul-KnownLeader").map(_.value.toBoolean)
+        lastContact   <- EitherT.fromOption[F](headers.get("X-Consul-LastContact".ci), "Header not present in response: X-Consul-LastContact").map(_.value.toLong)
+      } yield (index, knownLeader, lastContact)).fold(err => throw new RuntimeException(err), identity).flatMap {
+        case (index, knownLeader, lastContact) =>
+          d.decode(r, strict = false).fold(throw _, decoded => QueryResponse(decoded, index, knownLeader, lastContact))
+      }
+    case failedResponse =>
+      F.pure(UnexpectedStatus(failedResponse.status)).flatMap(F.raiseError)
   }
 }
