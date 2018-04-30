@@ -24,13 +24,15 @@ object ConsulOp {
     datacenter: Option[String],
     near:       Option[String],
     nodeMeta:   Option[String],
-    index:      Option[Long]
+    index:      Option[Long],
+    maxWait:    Option[Interval]
   ) extends ConsulOp[QueryResponse[List[HealthCheckResponse]]]
 
   final case class HealthListChecksForNode(
     node:       String,
     datacenter: Option[String],
-    index:      Option[Long]
+    index:      Option[Long],
+    maxWait:    Option[Interval]
   ) extends ConsulOp[QueryResponse[List[HealthCheckResponse]]]
 
   final case class HealthListChecksInState(
@@ -38,7 +40,8 @@ object ConsulOp {
     datacenter: Option[String],
     near:       Option[String],
     nodeMeta:   Option[String],
-    index:      Option[Long]
+    index:      Option[Long],
+    maxWait:    Option[Interval]
   ) extends ConsulOp[QueryResponse[List[HealthCheckResponse]]]
 
   // There's also a Catalog function called List Nodes for Service
@@ -49,7 +52,8 @@ object ConsulOp {
     nodeMeta:    Option[String],
     tag:         Option[String],
     passingOnly: Option[Boolean],
-    index:       Option[Long]
+    index:       Option[Long],
+    maxWait:     Option[Interval]
   ) extends ConsulOp[QueryResponse[List[HealthNodesForServiceResponse]]]
 
   final case object AgentListServices extends ConsulOp[Map[String, ServiceResponse]]
@@ -94,25 +98,28 @@ object ConsulOp {
     datacenter: Option[String],
     near:       Option[String],
     nodeMeta:   Option[String],
-    index:      Option[Long]
+    index:      Option[Long],
+    maxWait:    Option[Interval]
   ): ConsulOpF[QueryResponse[List[HealthCheckResponse]]] =
-    liftF(HealthListChecksForService(service, datacenter, near, nodeMeta, index))
+    liftF(HealthListChecksForService(service, datacenter, near, nodeMeta, index, maxWait))
 
   def healthListChecksForNode(
     node:       String,
     datacenter: Option[String],
-    index:      Option[Long]
+    index:      Option[Long],
+    maxWait:    Option[Interval]
   ): ConsulOpF[QueryResponse[List[HealthCheckResponse]]] =
-    liftF(HealthListChecksForNode(node, datacenter, index))
+    liftF(HealthListChecksForNode(node, datacenter, index, maxWait))
 
   def healthListChecksInState(
     state:      HealthStatus,
     datacenter: Option[String],
     near:       Option[String],
     nodeMeta:   Option[String],
-    index:      Option[Long]
+    index:      Option[Long],
+    maxWait:    Option[Interval]
   ): ConsulOpF[QueryResponse[List[HealthCheckResponse]]] =
-    liftF(HealthListChecksInState(state, datacenter, near, nodeMeta, index))
+    liftF(HealthListChecksInState(state, datacenter, near, nodeMeta, index, maxWait))
 
   def healthListNodesForService(
     service:     String,
@@ -121,9 +128,10 @@ object ConsulOp {
     nodeMeta:    Option[String],
     tag:         Option[String],
     passingOnly: Option[Boolean],
-    index:       Option[Long]
+    index:       Option[Long],
+    maxWait:     Option[Interval]
   ): ConsulOpF[QueryResponse[List[HealthNodesForServiceResponse]]] =
-    liftF(HealthListNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly, index))
+    liftF(HealthListNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly, index, maxWait))
 
   def agentListServices(): ConsulOpF[Map[String, ServiceResponse]] =
     liftF(AgentListServices)

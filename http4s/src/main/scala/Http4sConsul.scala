@@ -42,14 +42,14 @@ final class Http4sConsulClient[F[_]](
     case ConsulOp.KVSet(key, value)  => kvSet(key, value)
     case ConsulOp.KVListKeys(prefix) => kvList(prefix)
     case ConsulOp.KVDelete(key)      => kvDelete(key)
-    case ConsulOp.HealthListChecksForService(service, datacenter, near, nodeMeta, index) =>
-      healthChecksForService(service, datacenter, near, nodeMeta, index)
-    case ConsulOp.HealthListChecksForNode(node, datacenter, index) =>
-      healthChecksForNode(node, datacenter, index)
-    case ConsulOp.HealthListChecksInState(state, datacenter, near, nodeMeta, index) =>
-      healthChecksInState(state, datacenter, near, nodeMeta, index)
-    case ConsulOp.HealthListNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly, index) =>
-      healthNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly, index)
+    case ConsulOp.HealthListChecksForService(service, datacenter, near, nodeMeta, index, wait) =>
+      healthChecksForService(service, datacenter, near, nodeMeta, index, wait)
+    case ConsulOp.HealthListChecksForNode(node, datacenter, index, wait) =>
+      healthChecksForNode(node, datacenter, index, wait)
+    case ConsulOp.HealthListChecksInState(state, datacenter, near, nodeMeta, index, wait) =>
+      healthChecksInState(state, datacenter, near, nodeMeta, index, wait)
+    case ConsulOp.HealthListNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly, index, wait) =>
+      healthNodesForService(service, datacenter, near, nodeMeta, tag, passingOnly, index, wait)
     case ConsulOp.AgentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks) =>
       agentRegisterService(service, id, tags, address, port, enableTagOverride, check, checks)
     case ConsulOp.AgentDeregisterService(service) => agentDeregisterService(service)
@@ -110,7 +110,8 @@ final class Http4sConsulClient[F[_]](
     datacenter: Option[String],
     near:       Option[String],
     nodeMeta:   Option[String],
-    index:      Option[Long]
+    index:      Option[Long],
+    wait:       Option[Interval]
   ): F[QueryResponse[List[HealthCheckResponse]]] = {
     for {
       _ <- F.delay(log.debug(s"fetching health checks for service $service"))
@@ -121,7 +122,8 @@ final class Http4sConsulClient[F[_]](
               .+??("dc", datacenter)
               .+??("near", near)
               .+??("node-meta", nodeMeta)
-              .+??("index", index))))
+              .+??("index", index)
+              .+??("wait", wait.map(Interval.toString)))))
       response <- client.fetch[QueryResponse[List[HealthCheckResponse]]](req)(extractQueryResponse)
     } yield {
       log.debug(s"health check response: " + response)
@@ -132,7 +134,8 @@ final class Http4sConsulClient[F[_]](
   def healthChecksForNode(
     node:       String,
     datacenter: Option[String],
-    index:      Option[Long]
+    index:      Option[Long],
+    wait:       Option[Interval]
   ): F[QueryResponse[List[HealthCheckResponse]]] = {
     for {
       _ <- F.delay(log.debug(s"fetching health checks for node $node"))
@@ -141,7 +144,8 @@ final class Http4sConsulClient[F[_]](
           uri =
             (baseUri / "v1" / "health" / "node" / node)
               .+??("dc", datacenter)
-              .+??("index", index))))
+              .+??("index", index)
+              .+??("wait", wait.map(Interval.toString)))))
       response <- client.fetch[QueryResponse[List[HealthCheckResponse]]](req)(extractQueryResponse)
     } yield {
       log.debug(s"health checks for node response: $response")
@@ -154,7 +158,8 @@ final class Http4sConsulClient[F[_]](
     datacenter: Option[String],
     near:       Option[String],
     nodeMeta:   Option[String],
-    index:      Option[Long]
+    index:      Option[Long],
+    wait:       Option[Interval]
   ): F[QueryResponse[List[HealthCheckResponse]]] = {
     for {
       _ <- F.delay(log.debug(s"fetching health checks for service ${HealthStatus.toString(state)}"))
@@ -165,7 +170,8 @@ final class Http4sConsulClient[F[_]](
               .+??("dc", datacenter)
               .+??("near", near)
               .+??("node-meta", nodeMeta)
-              .+??("index", index))))
+              .+??("index", index)
+              .+??("wait", wait.map(Interval.toString)))))
       response <- client.fetch[QueryResponse[List[HealthCheckResponse]]](req)(extractQueryResponse)
     } yield {
       log.debug(s"health checks in state response: $response")
@@ -180,7 +186,8 @@ final class Http4sConsulClient[F[_]](
     nodeMeta:    Option[String],
     tag:         Option[String],
     passingOnly: Option[Boolean],
-    index:       Option[Long]
+    index:       Option[Long],
+    wait:        Option[Interval]
   ): F[QueryResponse[List[HealthNodesForServiceResponse]]] = {
     for {
       _ <- F.delay(log.debug(s"fetching nodes for service $service from health API"))
@@ -193,7 +200,8 @@ final class Http4sConsulClient[F[_]](
               .+??("node-meta", nodeMeta)
               .+??("tag", tag)
               .+??("passing", passingOnly.filter(identity)) // all values of passing parameter are treated the same by Consul
-              .+??("index", index))))
+              .+??("index", index)
+              .+??("wait", wait.map(Interval.toString)))))
 
       response <- client.fetch[QueryResponse[List[HealthNodesForServiceResponse]]](req)(extractQueryResponse)
     } yield {

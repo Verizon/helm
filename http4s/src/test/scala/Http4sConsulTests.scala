@@ -52,49 +52,49 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
   "healthListChecksForNode" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson, consulHeaders(1234, true, 0))
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListChecksForNode("localhost", None, None)).attempt.unsafeRunSync should ===(
+    helm.run(csl, ConsulOp.healthListChecksForNode("localhost", None, None, None)).attempt.unsafeRunSync should ===(
       Right(healthStatusReplyJson))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "doesn't actually matter since this part is ignored", consulHeaders(1234, true, 0))
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListChecksForNode("localhost", None, None)).attempt.unsafeRunSync should ===(
+    helm.run(csl, ConsulOp.healthListChecksForNode("localhost", None, None, None)).attempt.unsafeRunSync should ===(
       Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "healthListChecksInState" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson, consulHeaders(1234, true, 0))
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListChecksInState(HealthStatus.Passing, None, None, None, None)).attempt.unsafeRunSync should ===(
+    helm.run(csl, ConsulOp.healthListChecksInState(HealthStatus.Passing, None, None, None, None, None)).attempt.unsafeRunSync should ===(
       Right(healthStatusReplyJson))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "doesn't actually matter since this part is ignored", consulHeaders(1234, true, 0))
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListChecksInState(HealthStatus.Passing, None, None, None, None)).attempt.unsafeRunSync should ===(
+    helm.run(csl, ConsulOp.healthListChecksInState(HealthStatus.Passing, None, None, None, None, None)).attempt.unsafeRunSync should ===(
       Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "healthListChecksForService" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson, consulHeaders(1234, true, 0))
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListChecksForService("test", None, None, None, None)).attempt.unsafeRunSync should ===(
+    helm.run(csl, ConsulOp.healthListChecksForService("test", None, None, None, None, None)).attempt.unsafeRunSync should ===(
       Right(healthStatusReplyJson))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "doesn't actually matter since this part is ignored", consulHeaders(1234, true, 0))
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListChecksForService("test", None, None, None, None)).attempt.unsafeRunSync should ===(
+    helm.run(csl, ConsulOp.healthListChecksForService("test", None, None, None, None, None)).attempt.unsafeRunSync should ===(
       Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
   "healthListNodesForService" should "succeed with the proper result when the response is 200" in {
     val response = consulResponse(Status.Ok, healthNodesForServiceReplyJson, consulHeaders(1234, true, 0))
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None, None)).attempt.unsafeRunSync should ===(
+    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None, None, None)).attempt.unsafeRunSync should ===(
       Right(healthNodesForServiceReturnValue))
   }
 
@@ -102,7 +102,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
     val response = consulResponse(Status.Ok, healthNodesForServiceReplyJson, consulHeaders(1234, true, 0).filter(_.name != "X-Consul-Index".ci))
     val csl = constantConsul(response)
 
-    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None, None)).attempt.unsafeRunSync match {
+    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None, None, None)).attempt.unsafeRunSync match {
       case Left(re: RuntimeException) => assert(re.getMessage === "Header not present in response: X-Consul-Index")
       case other => fail(s"Expected RuntimeException(Header not present in response: X-Consul-Index), but got $other")
     }
@@ -112,7 +112,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
     val response = consulResponse(Status.Ok, healthNodesForServiceReplyJson, consulHeaders(1234, true, 0).filter(_.name != "X-Consul-KnownLeader".ci))
     val csl = constantConsul(response)
 
-    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None, None)).attempt.unsafeRunSync match {
+    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None, None, None)).attempt.unsafeRunSync match {
       case Left(re: RuntimeException) => assert(re.getMessage === "Header not present in response: X-Consul-KnownLeader")
       case other => fail(s"Expected RuntimeException(Header not present in response: X-Consul-KnownLeader), but got $other")
     }
@@ -122,7 +122,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
     val response = consulResponse(Status.Ok, healthNodesForServiceReplyJson, consulHeaders(1234, true, 0).filter(_.name != "X-Consul-LastContact".ci))
     val csl = constantConsul(response)
 
-    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None, None)).attempt.unsafeRunSync match {
+    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None, None, None)).attempt.unsafeRunSync match {
       case Left(re: RuntimeException) => assert(re.getMessage === "Header not present in response: X-Consul-LastContact")
       case other => fail(s"Expected RuntimeException(Header not present in response: X-Consul-LastContact), but got $other")
     }
@@ -131,7 +131,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "aww yeah", consulHeaders(1234, true, 0))
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None, None)).attempt.unsafeRunSync should ===(
+    helm.run(csl, ConsulOp.healthListNodesForService("test", None, None, None, None, None, None, None)).attempt.unsafeRunSync should ===(
       Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
