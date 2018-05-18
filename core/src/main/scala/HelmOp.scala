@@ -5,15 +5,28 @@ import argonaut.{DecodeJson, EncodeJson, StringWrap}, StringWrap.StringToParseWr
 import cats.data.NonEmptyList
 import cats.free.Free
 import cats.free.Free.liftF
-import cats.implicits._
+//import cats.implicits._
 
 sealed abstract class ConsulOp[A] extends Product with Serializable
 
 object ConsulOp {
 
-  final case class KVGet(key: Key) extends ConsulOp[Option[String]]
+  final case class KVGet(
+    key:        Key,
+    recurse:    Option[Boolean],
+    datacenter: Option[String],
+    separator:  Option[String],
+    index:      Option[Long],
+    maxWait:    Option[Interval]
+  ) extends ConsulOp[QueryResponse[List[KVGetResult]]]
 
-  final case class KVSet(key: Key, value: String) extends ConsulOp[Unit]
+  final case class KVGetRaw(
+    key:     Key,
+    index:   Option[Long],
+    maxWait: Option[Interval]
+  ) extends ConsulOp[QueryResponse[Option[Array[Byte]]]]
+
+  final case class KVSet(key: Key, value: Array[Byte]) extends ConsulOp[Unit]
 
   final case class KVDelete(key: Key) extends ConsulOp[Unit]
 
@@ -75,17 +88,42 @@ object ConsulOp {
 
   type ConsulOpF[A] = Free[ConsulOp, A]
 
-  def kvGet(key: Key): ConsulOpF[Option[String]] =
-    liftF(KVGet(key))
+  def kvGet(
+    key:        Key,
+    recurse:    Option[Boolean],
+    datacenter: Option[String],
+    separator:  Option[String],
+    index:      Option[Long],
+    maxWait:    Option[Interval]
+  ): ConsulOpF[QueryResponse[List[KVGetResult]]] =
+    liftF(KVGet(key, recurse, datacenter, separator, index, maxWait))
 
-  def kvGetJson[A:DecodeJson](key: Key): ConsulOpF[Either[Err, Option[A]]] =
-    kvGet(key).map(_.traverse(_.decodeEither[A]))
+  def kvGetRaw(
+    key:   Key,
+    index: Option[Long],
+    maxWait:    Option[Interval]
+  ): ConsulOpF[QueryResponse[Option[Array[Byte]]]] =
+    liftF(KVGetRaw(key, index, maxWait))
 
-  def kvSet(key: Key, value: String): ConsulOpF[Unit] =
+  def kvGetJson[A:DecodeJson](
+    key:     Key,
+    index:   Option[Long],
+    maxWait: Option[Interval]
+  ): ConsulOpF[Either[Err, QueryResponse[Option[A]]]] =
+    kvGetRaw(key, index, maxWait).map { response =>
+      response.value match {
+        case Some(bytes) =>
+          new String(bytes).decodeEither[A].right.map(decoded => response.copy(value = Some(decoded)))
+        case None =>
+          Right(response.copy(value = None))
+      }
+    }
+
+  def kvSet(key: Key, value: Array[Byte]): ConsulOpF[Unit] =
     liftF(KVSet(key, value))
 
   def kvSetJson[A](key: Key, value: A)(implicit A: EncodeJson[A]): ConsulOpF[Unit] =
-    kvSet(key, A.encode(value).toString)
+    kvSet(key, A.encode(value).toString.getBytes)
 
   def kvDelete(key: Key): ConsulOpF[Unit] =
     liftF(KVDelete(key))

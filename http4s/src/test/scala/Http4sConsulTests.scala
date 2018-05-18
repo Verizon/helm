@@ -14,38 +14,60 @@ import org.http4s.syntax.string.http4sStringSyntax
 class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEquals {
   import Http4sConsulTests._
 
-  "get" should "succeed with some when the response is 200" in {
-    val response = consulResponse(Status.Ok, "yay")
+  "kvGetRaw" should "succeed with some when the response is 200" in {
+    val response = consulResponse(Status.Ok, "yay", consulHeaders(999, false, 1))
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.kvGet("foo")).attempt.unsafeRunSync should ===(
-      Right(Some("yay")))
+    // Equality comparison for Option[Array[Byte]] doesn't work properly, but it should be representable as a String so this should be okay
+    helm.run(csl, ConsulOp.kvGetRaw("foo", None, None)).attempt.unsafeRunSync.right.map(r => r.copy(value = r.value.map(new String(_)))) should ===(
+      Right(QueryResponse[Option[String]](Some("yay"), 999, false, 1)))
   }
 
-  "get" should "succeed with none when the response is 404" in {
-    val response = consulResponse(Status.NotFound, "nope")
+  "kvGetRaw" should "succeed with none when the response is 404" in {
+    val response = consulResponse(Status.NotFound, "nope", consulHeaders(999, false, 1))
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.kvGet("foo")).attempt.unsafeRunSync should ===(
-      Right(None))
+    helm.run(csl, ConsulOp.kvGetRaw("foo", None, None)).attempt.unsafeRunSync should ===(
+      Right(QueryResponse[Option[Array[Byte]]](None, 999, false, 1)))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.kvGet("foo")).attempt.unsafeRunSync should ===(
+    helm.run(csl, ConsulOp.kvGetRaw("foo", None, None)).attempt.unsafeRunSync should ===(
       Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
-  "set" should "succeed when the response is 200" in {
+  "kvGet" should "succeed with some when the response is 200" in {
+    val response = consulResponse(Status.Ok, kvGetReplyJson, consulHeaders(555, false, 2))
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.kvGet("foo", Some(true), None, None, None, None)).attempt.unsafeRunSync should ===(
+      Right(kvGetReturnValue))
+  }
+
+  "kvGet" should "succeed with empty list when the response is 404" in {
+    val response = consulResponse(Status.NotFound, "nope", consulHeaders(555, false, 2))
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.kvGet("foo", None, None, None, None, None)).attempt.unsafeRunSync should ===(
+      Right(QueryResponse(List.empty[KVGetResult], 555, false, 2)))
+  }
+
+  it should "fail when the response is 500" in {
+    val response = consulResponse(Status.InternalServerError, "boo")
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.kvGet("foo", None, None, None, None, None)).attempt.unsafeRunSync should ===(
+      Left(UnexpectedStatus(Status.InternalServerError)))
+  }
+
+  "kvSet" should "succeed when the response is 200" in {
     val response = consulResponse(Status.Ok, "yay")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.kvSet("foo", "bar")).attempt.unsafeRunSync should ===(
+    helm.run(csl, ConsulOp.kvSet("foo", "bar".getBytes)).attempt.unsafeRunSync should ===(
       Right(()))
   }
 
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "boo")
     val csl = constantConsul(response)
-    helm.run(csl, ConsulOp.kvSet("foo", "bar")).attempt.unsafeRunSync should ===(
+    helm.run(csl, ConsulOp.kvSet("foo", "bar".getBytes)).attempt.unsafeRunSync should ===(
       Left(UnexpectedStatus(Status.InternalServerError)))
   }
 
@@ -53,7 +75,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
     val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson, consulHeaders(1234, true, 0))
     val csl = constantConsul(response)
     helm.run(csl, ConsulOp.healthListChecksForNode("localhost", None, None, None)).attempt.unsafeRunSync should ===(
-      Right(healthStatusReplyJson))
+      Right(healthStatusResponse))
   }
 
   it should "fail when the response is 500" in {
@@ -67,7 +89,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
     val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson, consulHeaders(1234, true, 0))
     val csl = constantConsul(response)
     helm.run(csl, ConsulOp.healthListChecksInState(HealthStatus.Passing, None, None, None, None, None)).attempt.unsafeRunSync should ===(
-      Right(healthStatusReplyJson))
+      Right(healthStatusResponse))
   }
 
   it should "fail when the response is 500" in {
@@ -81,7 +103,7 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
     val response = consulResponse(Status.Ok, serviceHealthChecksReplyJson, consulHeaders(1234, true, 0))
     val csl = constantConsul(response)
     helm.run(csl, ConsulOp.healthListChecksForService("test", None, None, None, None, None)).attempt.unsafeRunSync should ===(
-      Right(healthStatusReplyJson))
+      Right(healthStatusResponse))
   }
 
   it should "fail when the response is 500" in {
@@ -353,6 +375,39 @@ object Http4sConsulTests {
   ]
   """
 
+  val kvGetReplyJson = """
+  [
+      {
+          "Key": "foo",
+          "Value": "YmFy",
+          "Flags": 0,
+          "LockIndex": 0,
+          "CreateIndex": 43788,
+          "ModifyIndex": 43789
+      },
+      {
+          "Key": "foo/baz",
+          "Value": "cXV4",
+          "Flags": 1234,
+          "Session": "adf4238a-882b-9ddc-4a9d-5b6758e4159e",
+          "LockIndex": 0,
+          "CreateIndex": 43790,
+          "ModifyIndex": 43791
+      }
+  ]
+  """
+
+  val kvGetReturnValue =
+    QueryResponse(
+      List(
+        KVGetResult("foo", "YmFy", 0, None, 0, 43788, 43789),
+        KVGetResult("foo/baz", "cXV4", 1234, Some("adf4238a-882b-9ddc-4a9d-5b6758e4159e"), 0, 43790, 43791)
+      ),
+      555,
+      false,
+      2
+    )
+
   val healthNodesForServiceReturnValue =
     QueryResponse(
       List(
@@ -405,13 +460,13 @@ object Http4sConsulTests {
               123455121321L)
           )
         )
-    ),
-    1234,
-    true,
-    0
-  )
+      ),
+      1234,
+      true,
+      0
+    )
 
-  val healthStatusReplyJson =
+  val healthStatusResponse =
     QueryResponse(
       List(
         HealthCheckResponse(

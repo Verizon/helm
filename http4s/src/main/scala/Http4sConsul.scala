@@ -4,13 +4,12 @@ package http4s
 import argonaut.Json
 import argonaut.Json.jEmptyObject
 import argonaut.StringWrap.StringToStringWrap
-import cats.data.{EitherT, NonEmptyList}
+import cats.data.NonEmptyList
 import cats.effect.Effect
 import cats.~>
 import cats.implicits._
 import journal.Logger
 import org.http4s.Method.PUT
-import org.http4s.Status.NotFound
 import org.http4s._
 import org.http4s.argonaut._
 import org.http4s.client._
@@ -30,6 +29,7 @@ final class Http4sConsulClient[F[_]](
   import dsl._
 
   private implicit val keysDecoder: EntityDecoder[F, List[String]] = jsonOf[F, List[String]]
+  private implicit val listKvGetResultDecoder: EntityDecoder[F, List[KVGetResult]] = jsonOf[F, List[KVGetResult]]
   private implicit val listServicesDecoder: EntityDecoder[F, Map[String, ServiceResponse]] = jsonOf[F, Map[String, ServiceResponse]]
   private implicit val listHealthChecksDecoder: EntityDecoder[F, List[HealthCheckResponse]] = jsonOf[F, List[HealthCheckResponse]]
   private implicit val listHealthNodesForServiceResponseDecoder: EntityDecoder[F, List[HealthNodesForServiceResponse]] =
@@ -38,7 +38,9 @@ final class Http4sConsulClient[F[_]](
   private val log = Logger[this.type]
 
   def apply[A](op: ConsulOp[A]): F[A] = op match {
-    case ConsulOp.KVGet(key)         => kvGet(key)
+    case ConsulOp.KVGet(key, recurse, datacenter, separator, index, wait) =>
+      kvGet(key, recurse, datacenter, separator, index, wait)
+    case ConsulOp.KVGetRaw(key, index, wait) => kvGetRaw(key, index, wait)
     case ConsulOp.KVSet(key, value)  => kvSet(key, value)
     case ConsulOp.KVListKeys(prefix) => kvList(prefix)
     case ConsulOp.KVDelete(key)      => kvDelete(key)
@@ -64,20 +66,118 @@ final class Http4sConsulClient[F[_]](
   def addCreds(req: Request[F]): Request[F] =
     credentials.fold(req){case (un,pw) => req.putHeaders(Authorization(BasicCredentials(un,pw)))}
 
-  def kvGet(key: Key): F[Option[String]] = {
-    for {
-      _ <- F.delay(log.debug(s"fetching consul key $key"))
-      req = addCreds(addConsulToken(Request(uri = (baseUri / "v1" / "kv" / key).+?("raw"))))
-      value <- client.expect[String](req).map(Option.apply).recoverWith {
-        case UnexpectedStatus(NotFound) => F.pure(None)
-      }
-    } yield {
-      log.debug(s"consul value for key $key is $value")
-      value
+  /** A nice place to store the Consul response headers so we can pass them around */
+  case class ConsulHeaders(
+    index:       Long,
+    lastContact: Long,
+    knownLeader: Boolean
+  )
+
+  /** Helper function to get the value of a header out of a Response */
+  def extractHeaderValue(header: String, response: Response[F]): F[String] = {
+    response.headers.get(header.ci) match {
+      case Some(header) => F.pure(header.value)
+      case None         => F.pure(new RuntimeException(s"Header not present in response: $header")).flatMap(F.raiseError)
     }
   }
 
-  def kvSet(key: Key, value: String): F[Unit] =
+  /** Helper function to get Consul GET request metadata from response headers */
+  def extractConsulHeaders(response: Response[F]): F[ConsulHeaders] = {
+    for {
+      index       <- extractHeaderValue("X-Consul-Index", response).map(_.toLong)
+      lastContact <- extractHeaderValue("X-Consul-LastContact", response).map(_.toLong)
+      knownLeader <- extractHeaderValue("X-Consul-KnownLeader", response).map(_.toBoolean)
+    } yield ConsulHeaders(index, lastContact, knownLeader)
+  }
+
+  /**
+    * Encapsulates the functionality for parsing out the Consul headers from the HTTP response and decoding the JSON body.
+    * Note: these headers are only present for a portion of the API.
+    */
+  def extractQueryResponse[A](response: Response[F])(implicit d: EntityDecoder[F, A]): F[QueryResponse[A]] = response match {
+    case Successful(r) =>
+      for {
+        headers     <- extractConsulHeaders(response)
+        decodedBody <- d.decode(r, strict = false).fold(throw _, identity)
+      } yield {
+        QueryResponse(decodedBody, headers.index, headers.knownLeader, headers.lastContact)
+      }
+    case failedResponse =>
+      F.pure(UnexpectedStatus(failedResponse.status)).flatMap(F.raiseError)
+  }
+
+  def kvGet(
+    key:        Key,
+    recurse:    Option[Boolean],
+    datacenter: Option[String],
+    separator:  Option[String],
+    index:      Option[Long],
+    wait:       Option[Interval]
+  ): F[QueryResponse[List[KVGetResult]]] = {
+    for {
+      _ <- F.delay(log.debug(s"fetching consul key $key"))
+      req = addCreds(addConsulToken(
+        Request(
+          uri =
+            (baseUri / "v1" / "kv" / key)
+              .+??("recurse", recurse)
+              .+??("dc", datacenter)
+              .+??("separator", separator)
+              .+??("index", index)
+              .+??("wait", wait.map(Interval.toString)))))
+      response <- client.fetch[QueryResponse[List[KVGetResult]]](req) { response: Response[F] =>
+        response.status match {
+          case status@(Status.Ok|Status.NotFound) =>
+            for {
+              headers <- extractConsulHeaders(response)
+              value   <- if (status == Status.Ok) listKvGetResultDecoder.decode(response, strict = false).fold(throw _, identity) else F.pure(List.empty)
+            } yield {
+              QueryResponse(value, headers.index, headers.knownLeader, headers.lastContact)
+            }
+          case status =>
+            F.pure(UnexpectedStatus(status)).flatMap(F.raiseError)
+        }
+      }
+    } yield {
+      log.debug(s"consul response for key get $key was $response")
+      response
+    }
+  }
+
+  def kvGetRaw(
+    key:   Key,
+    index: Option[Long],
+    wait:  Option[Interval]
+  ): F[QueryResponse[Option[Array[Byte]]]] = {
+    for {
+      _ <- F.delay(log.debug(s"fetching consul key $key"))
+      req = addCreds(addConsulToken(
+        Request(
+          uri =
+            (baseUri / "v1" / "kv" / key)
+              .+?("raw")
+              .+??("index", index)
+              .+??("wait", wait.map(Interval.toString)))))
+      response <- client.fetch[QueryResponse[Option[Array[Byte]]]](req) { response: Response[F] =>
+        response.status match {
+          case status@(Status.Ok|Status.NotFound) =>
+            for {
+              headers <- extractConsulHeaders(response)
+              value   <- if (status == Status.Ok) response.body.compile.toVector.map(vec => Some(vec.toArray)) else F.pure(None)
+            } yield {
+              QueryResponse(value, headers.index, headers.knownLeader, headers.lastContact)
+            }
+          case status =>
+            F.pure(UnexpectedStatus(status)).flatMap(F.raiseError)
+        }
+      }
+    } yield {
+      log.debug(s"consul response for raw key get $key is $response")
+      response
+    }
+  }
+
+  def kvSet(key: Key, value: Array[Byte]): F[Unit] =
     for {
       _ <- F.delay(log.debug(s"setting consul key $key to $value"))
       req <- PUT(uri = baseUri / "v1" / "kv" / key, value).map(addConsulToken).map(addCreds)
@@ -265,24 +365,5 @@ final class Http4sConsulClient[F[_]](
           uri = (baseUri / "v1" / "agent" / "service" / "maintenance" / id).+?("enable", enable).+??("reason", reason))))
       response  <- client.expect[String](req)
     } yield log.debug(s"setting maintenance mode for service $id to $enable resulted in $response")
-  }
-
-  /**
-    * Encapsulates the functionality for parsing out the Consul headers from the HTTP response and decoding the JSON body.
-    * Note: these headers are only present for read endpoints, and only a subset of those.
-    */
-  private def extractQueryResponse[A](response: Response[F])(implicit d: EntityDecoder[F, A]): F[QueryResponse[A]] = response match {
-    case Successful(r) =>
-      val headers = r.headers
-      (for {
-        index         <- EitherT.fromOption[F](headers.get("X-Consul-Index".ci), "Header not present in response: X-Consul-Index").map(_.value.toLong)
-        knownLeader   <- EitherT.fromOption[F](headers.get("X-Consul-KnownLeader".ci), "Header not present in response: X-Consul-KnownLeader").map(_.value.toBoolean)
-        lastContact   <- EitherT.fromOption[F](headers.get("X-Consul-LastContact".ci), "Header not present in response: X-Consul-LastContact").map(_.value.toLong)
-      } yield (index, knownLeader, lastContact)).fold(err => throw new RuntimeException(err), identity).flatMap {
-        case (index, knownLeader, lastContact) =>
-          d.decode(r, strict = false).fold(throw _, decoded => QueryResponse(decoded, index, knownLeader, lastContact))
-      }
-    case failedResponse =>
-      F.pure(UnexpectedStatus(failedResponse.status)).flatMap(F.raiseError)
   }
 }
