@@ -163,7 +163,7 @@ final class Http4sConsulClient[F[_]](
           case status@(Status.Ok|Status.NotFound) =>
             for {
               headers <- extractConsulHeaders(response)
-              value   <- if (status == Status.Ok) response.body.compile.toVector.map(vec => Some(vec.toArray)) else F.pure(None)
+              value   <- if (status == Status.Ok) response.body.compile.to[Array].map(arr => Some(arr)) else F.pure(None)
             } yield {
               QueryResponse(value, headers.index, headers.knownLeader, headers.lastContact)
             }
