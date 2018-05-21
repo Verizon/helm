@@ -77,7 +77,7 @@ final class Http4sConsulClient[F[_]](
   def extractHeaderValue(header: String, response: Response[F]): F[String] = {
     response.headers.get(header.ci) match {
       case Some(header) => F.pure(header.value)
-      case None         => F.pure(new RuntimeException(s"Header not present in response: $header")).flatMap(F.raiseError)
+      case None         => F.raiseError(new NoSuchElementException(s"Header not present in response: $header"))
     }
   }
 
@@ -95,10 +95,10 @@ final class Http4sConsulClient[F[_]](
     * Note: these headers are only present for a portion of the API.
     */
   def extractQueryResponse[A](response: Response[F])(implicit d: EntityDecoder[F, A]): F[QueryResponse[A]] = response match {
-    case Successful(r) =>
+    case Successful(_) =>
       for {
         headers     <- extractConsulHeaders(response)
-        decodedBody <- d.decode(r, strict = false).fold(throw _, identity)
+        decodedBody <- response.as[A]
       } yield {
         QueryResponse(decodedBody, headers.index, headers.knownLeader, headers.lastContact)
       }
@@ -130,12 +130,12 @@ final class Http4sConsulClient[F[_]](
           case status@(Status.Ok|Status.NotFound) =>
             for {
               headers <- extractConsulHeaders(response)
-              value   <- if (status == Status.Ok) listKvGetResultDecoder.decode(response, strict = false).fold(throw _, identity) else F.pure(List.empty)
+              value   <- if (status == Status.Ok) response.as[List[KVGetResult]] else F.pure(List.empty)
             } yield {
               QueryResponse(value, headers.index, headers.knownLeader, headers.lastContact)
             }
-          case status =>
-            F.pure(UnexpectedStatus(status)).flatMap(F.raiseError)
+          case _ =>
+            response.as[String].flatMap(errorMsg => F.raiseError(new RuntimeException("Communication failed: " + errorMsg)))
         }
       }
     } yield {
