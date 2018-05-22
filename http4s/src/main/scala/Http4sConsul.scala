@@ -60,14 +60,14 @@ final class Http4sConsulClient[F[_]](
       agentEnableMaintenanceMode(id, enable, reason)
   }
 
-  def addConsulToken(req: Request[F]): Request[F] =
+  private def addConsulToken(req: Request[F]): Request[F] =
     accessToken.fold(req)(tok => req.putHeaders(Header("X-Consul-Token", tok)))
 
-  def addCreds(req: Request[F]): Request[F] =
+  private def addCreds(req: Request[F]): Request[F] =
     credentials.fold(req){case (un,pw) => req.putHeaders(Authorization(BasicCredentials(un,pw)))}
 
   /** A nice place to store the Consul response headers so we can pass them around */
-  case class ConsulHeaders(
+  private case class ConsulHeaders(
     index:       Long,
     lastContact: Long,
     knownLeader: Boolean
@@ -82,7 +82,7 @@ final class Http4sConsulClient[F[_]](
   }
 
   /** Helper function to get Consul GET request metadata from response headers */
-  def extractConsulHeaders(response: Response[F]): F[ConsulHeaders] = {
+  private def extractConsulHeaders(response: Response[F]): F[ConsulHeaders] = {
     for {
       index       <- extractHeaderValue("X-Consul-Index", response).map(_.toLong)
       lastContact <- extractHeaderValue("X-Consul-LastContact", response).map(_.toLong)
@@ -94,7 +94,7 @@ final class Http4sConsulClient[F[_]](
     * Encapsulates the functionality for parsing out the Consul headers from the HTTP response and decoding the JSON body.
     * Note: these headers are only present for a portion of the API.
     */
-  def extractQueryResponse[A](response: Response[F])(implicit d: EntityDecoder[F, A]): F[QueryResponse[A]] = response match {
+  private def extractQueryResponse[A](response: Response[F])(implicit d: EntityDecoder[F, A]): F[QueryResponse[A]] = response match {
     case Successful(_) =>
       for {
         headers     <- extractConsulHeaders(response)
@@ -103,7 +103,11 @@ final class Http4sConsulClient[F[_]](
         QueryResponse(decodedBody, headers.index, headers.knownLeader, headers.lastContact)
       }
     case failedResponse =>
-      F.pure(UnexpectedStatus(failedResponse.status)).flatMap(F.raiseError)
+      handleConsulErrorResponse(failedResponse).flatMap(F.raiseError)
+  }
+
+  private def handleConsulErrorResponse(response: Response[F]): F[Throwable] = {
+    response.as[String].map(errorMsg => new RuntimeException("Got error response from Consul: " + errorMsg))
   }
 
   def kvGet(
@@ -135,7 +139,7 @@ final class Http4sConsulClient[F[_]](
               QueryResponse(value, headers.index, headers.knownLeader, headers.lastContact)
             }
           case _ =>
-            response.as[String].flatMap(errorMsg => F.raiseError(new RuntimeException("Communication failed: " + errorMsg)))
+            handleConsulErrorResponse(response).flatMap(F.raiseError)
         }
       }
     } yield {
@@ -167,8 +171,8 @@ final class Http4sConsulClient[F[_]](
             } yield {
               QueryResponse(value, headers.index, headers.knownLeader, headers.lastContact)
             }
-          case status =>
-            F.pure(UnexpectedStatus(status)).flatMap(F.raiseError)
+          case _ =>
+            handleConsulErrorResponse(response).flatMap(F.raiseError)
         }
       }
     } yield {
@@ -181,7 +185,7 @@ final class Http4sConsulClient[F[_]](
     for {
       _ <- F.delay(log.debug(s"setting consul key $key to $value"))
       req <- PUT(uri = baseUri / "v1" / "kv" / key, value).map(addConsulToken).map(addCreds)
-      response <- client.expect[String](req)
+      response <- client.expectOr[String](req)(handleConsulErrorResponse)
     } yield log.debug(s"setting consul key $key resulted in response $response")
 
   def kvList(prefix: Key): F[Set[Key]] = {
@@ -189,7 +193,7 @@ final class Http4sConsulClient[F[_]](
 
     for {
       _ <- F.delay(log.debug(s"listing key consul with the prefix: $prefix"))
-      response <- client.expect[List[String]](req)
+      response <- client.expectOr[List[String]](req)(handleConsulErrorResponse)
     } yield {
       log.debug(s"listing of keys: $response")
       response.toSet
@@ -201,7 +205,7 @@ final class Http4sConsulClient[F[_]](
 
     for {
       _ <- F.delay(log.debug(s"deleting $key from the consul KV store"))
-      response <- client.expect[String](req)
+      response <- client.expectOr[String](req)(handleConsulErrorResponse)
     } yield log.debug(s"response from delete: $response")
   }
 
@@ -334,7 +338,7 @@ final class Http4sConsulClient[F[_]](
     for {
       _ <- F.delay(log.debug(s"registering $service with json: ${json.toString}"))
       req <- PUT(baseUri / "v1" / "agent" / "service" / "register", json).map(addConsulToken).map(addCreds)
-      response <- client.expect[String](req)
+      response <- client.expectOr[String](req)(handleConsulErrorResponse)
     } yield log.debug(s"registering service $service resulted in response $response")
   }
 
@@ -342,7 +346,7 @@ final class Http4sConsulClient[F[_]](
     val req = addCreds(addConsulToken(Request(Method.PUT, uri = (baseUri / "v1" / "agent" / "service" / "deregister" / id))))
     for {
       _ <- F.delay(log.debug(s"deregistering service with id $id"))
-      response <- client.expect[String](req)
+      response <- client.expectOr[String](req)(handleConsulErrorResponse)
     } yield log.debug(s"response from deregister: " + response)
   }
 
@@ -350,7 +354,7 @@ final class Http4sConsulClient[F[_]](
     for {
       _ <- F.delay(log.debug(s"listing services registered with local agent"))
       req = addCreds(addConsulToken(Request(uri = (baseUri / "v1" / "agent" / "services"))))
-      services <- client.expect[Map[String, ServiceResponse]](req)
+      services <- client.expectOr[Map[String, ServiceResponse]](req)(handleConsulErrorResponse)
     } yield {
       log.debug(s"got services: $services")
       services
@@ -363,7 +367,7 @@ final class Http4sConsulClient[F[_]](
       req = addCreds(addConsulToken(
         Request(Method.PUT,
           uri = (baseUri / "v1" / "agent" / "service" / "maintenance" / id).+?("enable", enable).+??("reason", reason))))
-      response  <- client.expect[String](req)
+      response  <- client.expectOr[String](req)(handleConsulErrorResponse)
     } yield log.debug(s"setting maintenance mode for service $id to $enable resulted in $response")
   }
 }
