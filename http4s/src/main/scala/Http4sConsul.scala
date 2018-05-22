@@ -73,8 +73,8 @@ final class Http4sConsulClient[F[_]](
     knownLeader: Boolean
   )
 
-  /** Helper function to get the value of a header out of a Response */
-  def extractHeaderValue(header: String, response: Response[F]): F[String] = {
+  /** Helper function to get the value of a header out of a Response. Only used by extractConsulHeaders */
+  private def extractHeaderValue(header: String, response: Response[F]): F[String] = {
     response.headers.get(header.ci) match {
       case Some(header) => F.pure(header.value)
       case None         => F.raiseError(new NoSuchElementException(s"Header not present in response: $header"))
@@ -163,7 +163,7 @@ final class Http4sConsulClient[F[_]](
           case status@(Status.Ok|Status.NotFound) =>
             for {
               headers <- extractConsulHeaders(response)
-              value   <- if (status == Status.Ok) response.body.compile.to[Array].map(arr => Some(arr)) else F.pure(None)
+              value   <- if (status == Status.Ok) response.body.compile.to[Array].map(Some(_)) else F.pure(None)
             } yield {
               QueryResponse(value, headers.index, headers.knownLeader, headers.lastContact)
             }

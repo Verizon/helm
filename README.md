@@ -42,9 +42,9 @@ a base url for consul:
 import cats.effect.IO
 import helm.http4s._
 import org.http4s.Uri.uri
-import org.http4s.client.blaze.PooledHttp1Client
+import org.http4s.client.blaze.Http1Client
 
-val client = PooledHttp1Client[IO]()
+val client = Http1Client[IO]().unsafeRunSync
 val baseUrl = uri("http://127.0.0.1:8500")
 
 val interpreter = new Http4sConsulClient(baseUrl, client)
