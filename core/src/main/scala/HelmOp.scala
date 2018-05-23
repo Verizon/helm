@@ -5,7 +5,6 @@ import argonaut.{DecodeJson, EncodeJson, StringWrap}, StringWrap.StringToParseWr
 import cats.data.NonEmptyList
 import cats.free.Free
 import cats.free.Free.liftF
-//import cats.implicits._
 
 sealed abstract class ConsulOp[A] extends Product with Serializable
 
@@ -113,7 +112,7 @@ object ConsulOp {
     kvGetRaw(key, index, maxWait).map { response =>
       response.value match {
         case Some(bytes) =>
-          new String(bytes).decodeEither[A].right.map(decoded => response.copy(value = Some(decoded)))
+          new String(bytes, "UTF-8").decodeEither[A].right.map(decoded => response.copy(value = Some(decoded)))
         case None =>
           Right(response.copy(value = None))
       }
@@ -123,7 +122,7 @@ object ConsulOp {
     liftF(KVSet(key, value))
 
   def kvSetJson[A](key: Key, value: A)(implicit A: EncodeJson[A]): ConsulOpF[Unit] =
-    kvSet(key, A.encode(value).toString.getBytes)
+    kvSet(key, A.encode(value).toString.getBytes("UTF-8"))
 
   def kvDelete(key: Key): ConsulOpF[Unit] =
     liftF(KVDelete(key))
