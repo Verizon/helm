@@ -69,14 +69,16 @@ class IntegrationSpec
 
   val interpreter = new Http4sConsulClient(baseUrl, client)
 
-  "consul" should "work" in check { (k: String, v: String) =>
+  "consul" should "work" in check { (k: String, v: Array[Byte]) =>
     scala.concurrent.Await.result(dockerContainers.head.isReady(), 20.seconds)
     helm.run(interpreter, ConsulOp.kvSet(k, v)).unsafeRunSync
-    helm.run(interpreter, ConsulOp.kvGet(k)).unsafeRunSync should be (Some(v))
+    // Equality comparison for Option[Array[Byte]] doesn't work properly. Since we expect the value to always be Some making a custom matcher doesn't seem worthwhile, so call .get on the Option
+    // See https://github.com/scalatest/scalatest/issues/491
+    helm.run(interpreter, ConsulOp.kvGetRaw(k, None, None)).unsafeRunSync.value.get should be (v)
 
     helm.run(interpreter, ConsulOp.kvListKeys("")).unsafeRunSync should contain (k)
     helm.run(interpreter, ConsulOp.kvDelete(k)).unsafeRunSync
     helm.run(interpreter, ConsulOp.kvListKeys("")).unsafeRunSync should not contain (k)
     true
-  }(implicitly, implicitly, Arbitrary(Gen.alphaStr suchThat(_.size > 0)), implicitly, implicitly, Arbitrary(Gen.alphaStr), implicitly, implicitly, implicitly[CheckerAsserting[EntityDecoder[IO, String]]], implicitly, implicitly)
+  }(implicitly, implicitly, Arbitrary(Gen.alphaStr suchThat(_.size > 0)), implicitly, implicitly, Arbitrary.arbContainer[Array, Byte], implicitly, implicitly, implicitly[CheckerAsserting[EntityDecoder[IO, Array[Byte]]]], implicitly, implicitly)
 }
