@@ -364,7 +364,7 @@ object Http4sConsulTests {
   [
       {
           "Key": "foo",
-          "Value": "YmFy",
+          "Value": null,
           "Flags": 0,
           "LockIndex": 0,
           "CreateIndex": 43788,
@@ -385,8 +385,8 @@ object Http4sConsulTests {
   val kvGetReturnValue =
     QueryResponse(
       List(
-        KVGetResult("foo", "YmFy", 0, None, 0, 43788, 43789),
-        KVGetResult("foo/baz", "cXV4", 1234, Some("adf4238a-882b-9ddc-4a9d-5b6758e4159e"), 0, 43790, 43791)
+        KVGetResult("foo", None, 0, None, 0, 43788, 43789),
+        KVGetResult("foo/baz", Some("cXV4"), 1234, Some("adf4238a-882b-9ddc-4a9d-5b6758e4159e"), 0, 43790, 43791)
       ),
       555,
       false,
