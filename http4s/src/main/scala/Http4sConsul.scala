@@ -124,7 +124,7 @@ final class Http4sConsulClient[F[_]](
         Request(
           uri =
             (baseUri / "v1" / "kv" / key)
-              .+??("recurse", recurse)
+              .+??("recurse", recurse.filter(identity))
               .+??("dc", datacenter)
               .+??("separator", separator)
               .+??("index", index)
