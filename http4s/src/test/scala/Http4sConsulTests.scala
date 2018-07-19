@@ -31,6 +31,13 @@ class Http4sConsulTests extends FlatSpec with Matchers with TypeCheckedTripleEqu
       Right(QueryResponse[Option[Array[Byte]]](None, 999, false, 1)))
   }
 
+  "kvGetRaw" should "succeed with none when the response body is empty" in {
+    val response = consulResponse(Status.Ok, "", consulHeaders(999, false, 1))
+    val csl = constantConsul(response)
+    helm.run(csl, ConsulOp.kvGetRaw("foo", None, None)).attempt.unsafeRunSync should ===(
+      Right(QueryResponse[Option[Array[Byte]]](None, 999, false, 1)))
+  }
+
   it should "fail when the response is 500" in {
     val response = consulResponse(Status.InternalServerError, "error")
     val csl = constantConsul(response)
