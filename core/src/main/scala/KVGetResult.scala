@@ -5,7 +5,7 @@ import argonaut._, Argonaut._
 /** Case class representing the response to a KV "Read Key" API call to Consul */
 final case class KVGetResult(
   key:         String,
-  value:       String,
+  value:       Option[String],
   flags:       Long,
   session:     Option[String],
   lockIndex:   Long,
@@ -18,7 +18,7 @@ object KVGetResult {
     DecodeJson(j =>
       for {
         key         <- (j --\ "Key").as[String]
-        value       <- (j --\ "Value").as[String]
+        value       <- (j --\ "Value").as[Option[String]]
         flags       <- (j --\ "Flags").as[Long]
         session     <- (j --\ "Session").as[Option[String]]
         lockIndex   <- (j --\ "LockIndex").as[Long]
